@@ -1,0 +1,37 @@
+# Detector signal -> attack class. These mappings are INFERENCES (analyst judgement), not facts.
+signals:
+  integrity_changed_same_version: Lockfile tampering
+  resolved_host_changed: Dependency source hijack
+  non_registry_source: Dependency source hijack
+  new_dependency: Unexpected dependency
+  large_version_jump: Suspicious package update
+  install_script_added: Malicious install script
+  install_script: Malicious install script
+  name_confusion: Typosquatting
+  extra_index: Dependency confusion
+  yanked: Compromised or broken release
+  deprecated: Abandoned dependency
+  recently_published: Suspicious package update
+  sdist_only: Malicious install script
+  hash_mismatch: Lockfile tampering
+  declared_not_imported: Unexpected dependency
+  imported_not_declared: Undeclared dependency
+rules:
+  DF001: Untrusted or mutable image
+  DF002: Untrusted or mutable image
+  DF003: Container privilege
+  DF004: Remote code fetch at build
+  DF005: Code injection
+  DF006: Unpinned build dependency
+  DF007: End-of-life base image
+  DC001: Untrusted or mutable image
+  CI001: Unpinned third-party action
+  CI002: Privileged untrusted trigger
+  CI003: Excessive CI permissions
+  CI004: CI script injection
+  SEC001: Exposed secret
+patterns:
+  pipe_to_shell: Code injection
+  base64_decode: Obfuscated install script
+  eval: Code injection
+  remote_download: Remote code fetch at build
