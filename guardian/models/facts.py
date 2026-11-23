@@ -156,3 +156,7 @@ class ScanFacts(BaseModel):
     config: ConfigInventory = Field(default_factory=ConfigInventory)
     file_hashes: Dict[str, str] = Field(default_factory=dict)
     errors: List[str] = Field(default_factory=list)
+
+
+# The team's Stage 1 contract is ScanFacts; "Facts" is the name the rest of the code base uses.
+Facts = ScanFacts
