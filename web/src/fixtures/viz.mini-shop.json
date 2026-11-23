@@ -1,0 +1,1653 @@
+{
+ "nodes": [
+  {
+   "id": "project:guardian-fixture",
+   "type": "project",
+   "label": "guardian-fixture"
+  },
+  {
+   "id": "pkg:npm/lodash",
+   "type": "package",
+   "label": "lodash",
+   "ecosystem": "npm",
+   "risk": "P0",
+   "findings": [
+    "ac3726cac7d6",
+    "c3eef1b1a58b",
+    "36ece35e755a",
+    "7a5ab77e58ea",
+    "bc3bf1629bc9"
+   ],
+   "vulns": 2
+  },
+  {
+   "id": "pkg:npm/mkdirp",
+   "type": "package",
+   "label": "mkdirp",
+   "ecosystem": "npm",
+   "risk": "P3",
+   "findings": [
+    "c1d59932e903"
+   ]
+  },
+  {
+   "id": "pkg:npm/debug",
+   "type": "package",
+   "label": "debug",
+   "ecosystem": "npm",
+   "risk": "P3",
+   "findings": [
+    "d6f4a645ff82",
+    "f785ab090bad"
+   ]
+  },
+  {
+   "id": "pkg:npm/lodahs",
+   "type": "package",
+   "label": "lodahs",
+   "ecosystem": "npm",
+   "risk": "P0",
+   "findings": [
+    "c7b4ef59f47a",
+    "543e5b5b71ff",
+    "1a5cc5904d4d",
+    "ea9f00c66112",
+    "67f9c1d35ce2"
+   ],
+   "vulns": 2
+  },
+  {
+   "id": "pkg:pypi/pytest",
+   "type": "package",
+   "label": "pytest",
+   "ecosystem": "pypi",
+   "risk": "P3",
+   "findings": [
+    "38b13d9efa90"
+   ],
+   "vulns": 1
+  },
+  {
+   "id": "pkg:pypi/flask",
+   "type": "package",
+   "label": "flask",
+   "ecosystem": "pypi",
+   "risk": "P1",
+   "findings": [
+    "2139e1509afd",
+    "f09483111d4a"
+   ],
+   "vulns": 2
+  },
+  {
+   "id": "pkg:pypi/stripe",
+   "type": "package",
+   "label": "stripe",
+   "ecosystem": "pypi"
+  },
+  {
+   "id": "pkg:pypi/sqlalchemy",
+   "type": "package",
+   "label": "SQLAlchemy",
+   "ecosystem": "pypi"
+  },
+  {
+   "id": "pkg:pypi/pyyaml",
+   "type": "package",
+   "label": "PyYAML",
+   "ecosystem": "pypi"
+  },
+  {
+   "id": "pkg:pypi/requests",
+   "type": "package",
+   "label": "requests",
+   "ecosystem": "pypi",
+   "risk": "P2",
+   "findings": [
+    "4a0cecf809d0",
+    "04f8f24304a3",
+    "daa08407fb8f",
+    "5309e4d30842"
+   ],
+   "vulns": 4
+  },
+  {
+   "id": "pkg:pypi/colorama",
+   "type": "package",
+   "label": "colorama",
+   "ecosystem": "pypi",
+   "risk": "P3",
+   "findings": [
+    "db7961523076",
+    "ee27d30deb96"
+   ]
+  },
+  {
+   "id": "pkg:npm/debug@4.3.4",
+   "type": "artifact",
+   "label": "debug@4.3.4",
+   "ecosystem": "npm",
+   "scope": "prod",
+   "direct": true,
+   "version": "4.3.4",
+   "registry": "registry.npmjs.org",
+   "resolved_url": "https://registry.npmjs.org/debug/-/debug-4.3.4.tgz",
+   "has_install_script": false,
+   "source_repo": "https://github.com/debug-js/debug",
+   "seen_by": [
+    "lockfile"
+   ],
+   "depth": 0,
+   "fan_in": 0,
+   "fan_out": 1,
+   "risk": "P3",
+   "findings": [
+    "f785ab090bad"
+   ]
+  },
+  {
+   "id": "pkg:npm/lodahs@1.0.0",
+   "type": "artifact",
+   "label": "lodahs@1.0.0",
+   "ecosystem": "npm",
+   "scope": "prod",
+   "direct": true,
+   "version": "1.0.0",
+   "registry": "registry.npmjs.org",
+   "resolved_url": "https://registry.npmjs.org/lodahs/-/lodahs-1.0.0.tgz",
+   "has_install_script": true,
+   "source_repo": "https://github.com/npm/security-holder",
+   "seen_by": [
+    "lockfile"
+   ],
+   "depth": 0,
+   "fan_in": 0,
+   "fan_out": 0,
+   "risk": "P0",
+   "findings": [
+    "c7b4ef59f47a",
+    "543e5b5b71ff",
+    "1a5cc5904d4d",
+    "67f9c1d35ce2"
+   ],
+   "vulns": 2
+  },
+  {
+   "id": "pkg:npm/lodash@4.17.21",
+   "type": "artifact",
+   "label": "lodash@4.17.21",
+   "ecosystem": "npm",
+   "scope": "prod",
+   "direct": true,
+   "version": "4.17.21",
+   "registry": "deps.example.invalid",
+   "resolved_url": "http://deps.example.invalid/lodash-4.17.21.tgz",
+   "has_install_script": false,
+   "source_repo": "https://github.com/lodash/lodash",
+   "seen_by": [
+    "lockfile"
+   ],
+   "depth": 0,
+   "fan_in": 0,
+   "fan_out": 0,
+   "risk": "P0",
+   "findings": [
+    "ac3726cac7d6",
+    "c3eef1b1a58b",
+    "36ece35e755a",
+    "7a5ab77e58ea",
+    "bc3bf1629bc9"
+   ],
+   "vulns": 2
+  },
+  {
+   "id": "pkg:npm/minimist",
+   "type": "package",
+   "label": "minimist",
+   "ecosystem": "npm",
+   "risk": "P1",
+   "findings": [
+    "463b717571f5",
+    "e5915268ccca"
+   ],
+   "vulns": 2
+  },
+  {
+   "id": "pkg:npm/minimist@0.0.8",
+   "type": "artifact",
+   "label": "minimist@0.0.8",
+   "ecosystem": "npm",
+   "scope": "prod",
+   "direct": false,
+   "version": "0.0.8",
+   "registry": "registry.npmjs.org",
+   "resolved_url": "https://registry.npmjs.org/minimist/-/minimist-0.0.8.tgz",
+   "has_install_script": false,
+   "source_repo": "https://github.com/minimistjs/minimist",
+   "seen_by": [
+    "lockfile"
+   ],
+   "depth": 1,
+   "fan_in": 1,
+   "fan_out": 0,
+   "risk": "P1",
+   "findings": [
+    "463b717571f5",
+    "e5915268ccca"
+   ],
+   "vulns": 2
+  },
+  {
+   "id": "pkg:npm/mkdirp@0.5.1",
+   "type": "artifact",
+   "label": "mkdirp@0.5.1",
+   "ecosystem": "npm",
+   "scope": "prod",
+   "direct": true,
+   "version": "0.5.1",
+   "registry": "registry.npmjs.org",
+   "resolved_url": "https://registry.npmjs.org/mkdirp/-/mkdirp-0.5.1.tgz",
+   "has_install_script": false,
+   "source_repo": "https://github.com/isaacs/node-mkdirp",
+   "seen_by": [
+    "lockfile"
+   ],
+   "depth": 0,
+   "fan_in": 0,
+   "fan_out": 1,
+   "risk": "P3",
+   "findings": [
+    "c1d59932e903"
+   ]
+  },
+  {
+   "id": "pkg:npm/ms",
+   "type": "package",
+   "label": "ms",
+   "ecosystem": "npm"
+  },
+  {
+   "id": "pkg:npm/ms@2.1.2",
+   "type": "artifact",
+   "label": "ms@2.1.2",
+   "ecosystem": "npm",
+   "scope": "prod",
+   "direct": false,
+   "version": "2.1.2",
+   "registry": "registry.npmjs.org",
+   "resolved_url": "https://registry.npmjs.org/ms/-/ms-2.1.2.tgz",
+   "has_install_script": false,
+   "source_repo": "https://github.com/vercel/ms",
+   "seen_by": [
+    "lockfile"
+   ],
+   "depth": 1,
+   "fan_in": 1,
+   "fan_out": 0
+  },
+  {
+   "id": "pkg:pypi/colorama@0.4.4",
+   "type": "artifact",
+   "label": "colorama@0.4.4",
+   "ecosystem": "pypi",
+   "scope": "prod",
+   "direct": true,
+   "version": "0.4.4",
+   "registry": "pypi.org",
+   "has_install_script": false,
+   "source_repo": "https://github.com/tartley/colorama",
+   "seen_by": [
+    "lockfile"
+   ],
+   "depth": 0,
+   "fan_in": 0,
+   "fan_out": 0,
+   "risk": "P3",
+   "findings": [
+    "ee27d30deb96"
+   ]
+  },
+  {
+   "id": "pkg:pypi/flask@2.0.1",
+   "type": "artifact",
+   "label": "flask@2.0.1",
+   "ecosystem": "pypi",
+   "scope": "prod",
+   "direct": true,
+   "version": "2.0.1",
+   "registry": "pypi.org",
+   "has_install_script": false,
+   "source_repo": "https://github.com/pallets/flask",
+   "seen_by": [
+    "lockfile"
+   ],
+   "depth": 0,
+   "fan_in": 0,
+   "fan_out": 0,
+   "risk": "P1",
+   "findings": [
+    "2139e1509afd",
+    "f09483111d4a"
+   ],
+   "vulns": 2
+  },
+  {
+   "id": "pkg:pypi/pytest@7.0.0",
+   "type": "artifact",
+   "label": "pytest@7.0.0",
+   "ecosystem": "pypi",
+   "scope": "dev",
+   "direct": true,
+   "version": "7.0.0",
+   "registry": "pypi.org",
+   "has_install_script": false,
+   "source_repo": "https://github.com/pytest-dev/pytest",
+   "seen_by": [
+    "lockfile"
+   ],
+   "depth": 0,
+   "fan_in": 0,
+   "fan_out": 0,
+   "risk": "P3",
+   "findings": [
+    "38b13d9efa90"
+   ],
+   "vulns": 1
+  },
+  {
+   "id": "pkg:pypi/pyyaml@5.4",
+   "type": "artifact",
+   "label": "PyYAML@5.4",
+   "ecosystem": "pypi",
+   "scope": "prod",
+   "direct": true,
+   "version": "5.4",
+   "registry": "pypi.org",
+   "has_install_script": false,
+   "source_repo": "https://github.com/yaml/pyyaml",
+   "seen_by": [
+    "lockfile"
+   ],
+   "depth": 0,
+   "fan_in": 0,
+   "fan_out": 0
+  },
+  {
+   "id": "pkg:pypi/requests@2.25.1",
+   "type": "artifact",
+   "label": "requests@2.25.1",
+   "ecosystem": "pypi",
+   "scope": "prod",
+   "direct": true,
+   "version": "2.25.1",
+   "registry": "pypi.org",
+   "has_install_script": false,
+   "source_repo": "https://github.com/psf/requests",
+   "seen_by": [
+    "lockfile"
+   ],
+   "depth": 0,
+   "fan_in": 0,
+   "fan_out": 0,
+   "risk": "P2",
+   "findings": [
+    "4a0cecf809d0",
+    "04f8f24304a3",
+    "daa08407fb8f",
+    "5309e4d30842"
+   ],
+   "vulns": 4
+  },
+  {
+   "id": "pkg:pypi/sqlalchemy@1.4.20",
+   "type": "artifact",
+   "label": "SQLAlchemy@1.4.20",
+   "ecosystem": "pypi",
+   "scope": "prod",
+   "direct": true,
+   "version": "1.4.20",
+   "registry": "pypi.org",
+   "has_install_script": false,
+   "source_repo": "https://github.com/sqlalchemy/sqlalchemy",
+   "seen_by": [
+    "lockfile"
+   ],
+   "depth": 0,
+   "fan_in": 0,
+   "fan_out": 0
+  },
+  {
+   "id": "pkg:pypi/stripe@2.60.0",
+   "type": "artifact",
+   "label": "stripe@2.60.0",
+   "ecosystem": "pypi",
+   "scope": "prod",
+   "direct": true,
+   "version": "2.60.0",
+   "registry": "pypi.org",
+   "has_install_script": false,
+   "source_repo": "https://github.com/stripe/stripe-python",
+   "seen_by": [
+    "lockfile"
+   ],
+   "depth": 0,
+   "fan_in": 0,
+   "fan_out": 0
+  },
+  {
+   "id": "file:index.js",
+   "type": "source_module",
+   "label": "index.js",
+   "language": "javascript",
+   "is_test": false,
+   "loc": 6
+  },
+  {
+   "id": "file:app/db.py",
+   "type": "source_module",
+   "label": "app/db.py",
+   "language": "python",
+   "is_test": false,
+   "loc": 6
+  },
+  {
+   "id": "func:app/db.py::<module>",
+   "type": "function",
+   "label": "<module>",
+   "file": "app/db.py"
+  },
+  {
+   "id": "env:DATABASE_URL",
+   "type": "secret",
+   "label": "DATABASE_URL"
+  },
+  {
+   "id": "file:app/models.py",
+   "type": "source_module",
+   "label": "app/models.py",
+   "language": "python",
+   "is_test": false,
+   "loc": 12
+  },
+  {
+   "id": "func:app/models.py::<module>",
+   "type": "function",
+   "label": "<module>",
+   "file": "app/models.py"
+  },
+  {
+   "id": "func:app/models.py::Order",
+   "type": "model",
+   "label": "Order",
+   "file": "app/models.py"
+  },
+  {
+   "id": "table:orders",
+   "type": "db_table",
+   "label": "orders"
+  },
+  {
+   "id": "file:app/__init__.py",
+   "type": "source_module",
+   "label": "app/__init__.py",
+   "language": "python",
+   "is_test": false,
+   "loc": 7
+  },
+  {
+   "id": "file:app/api/routes.py",
+   "type": "source_module",
+   "label": "app/api/routes.py",
+   "language": "python",
+   "is_test": false,
+   "loc": 15
+  },
+  {
+   "id": "func:app/__init__.py::<module>",
+   "type": "function",
+   "label": "<module>",
+   "file": "app/__init__.py"
+  },
+  {
+   "id": "file:app/payments/service.py",
+   "type": "source_module",
+   "label": "app/payments/service.py",
+   "language": "python",
+   "is_test": false,
+   "loc": 17
+  },
+  {
+   "id": "file:app/utils/helpers.py",
+   "type": "source_module",
+   "label": "app/utils/helpers.py",
+   "language": "python",
+   "is_test": false,
+   "loc": 7
+  },
+  {
+   "id": "func:app/api/routes.py::checkout",
+   "type": "function",
+   "label": "checkout",
+   "file": "app/api/routes.py"
+  },
+  {
+   "id": "func:app/api/routes.py::<module>",
+   "type": "function",
+   "label": "<module>",
+   "file": "app/api/routes.py"
+  },
+  {
+   "id": "func:app/payments/service.py::charge",
+   "type": "function",
+   "label": "charge",
+   "file": "app/payments/service.py"
+  },
+  {
+   "id": "func:app/utils/helpers.py::send_event",
+   "type": "function",
+   "label": "send_event",
+   "file": "app/utils/helpers.py"
+  },
+  {
+   "id": "route:POST /checkout",
+   "type": "route",
+   "label": "POST /checkout",
+   "framework": "flask"
+  },
+  {
+   "id": "input:request.json",
+   "type": "input",
+   "label": "request.json"
+  },
+  {
+   "id": "file:app/api/__init__.py",
+   "type": "source_module",
+   "label": "app/api/__init__.py",
+   "language": "python",
+   "is_test": false,
+   "loc": 1
+  },
+  {
+   "id": "file:app/config/load.py",
+   "type": "source_module",
+   "label": "app/config/load.py",
+   "language": "python",
+   "is_test": false,
+   "loc": 7
+  },
+  {
+   "id": "func:app/config/load.py::load_settings",
+   "type": "function",
+   "label": "load_settings",
+   "file": "app/config/load.py"
+  },
+  {
+   "id": "sink:deserialize:yaml.load",
+   "type": "sensitive_call",
+   "label": "yaml.load",
+   "category": "deserialize"
+  },
+  {
+   "id": "file:app/config/__init__.py",
+   "type": "source_module",
+   "label": "app/config/__init__.py",
+   "language": "python",
+   "is_test": false,
+   "loc": 1
+  },
+  {
+   "id": "file:app/payments/client.py",
+   "type": "source_module",
+   "label": "app/payments/client.py",
+   "language": "python",
+   "is_test": false,
+   "loc": 10
+  },
+  {
+   "id": "func:app/payments/client.py::get_client",
+   "type": "function",
+   "label": "get_client",
+   "file": "app/payments/client.py"
+  },
+  {
+   "id": "env:STRIPE_KEY",
+   "type": "secret",
+   "label": "STRIPE_KEY"
+  },
+  {
+   "id": "service:Stripe",
+   "type": "external_service",
+   "label": "Stripe"
+  },
+  {
+   "id": "table:<unknown>",
+   "type": "db_table",
+   "label": "database (unknown table)"
+  },
+  {
+   "id": "file:app/payments/__init__.py",
+   "type": "source_module",
+   "label": "app/payments/__init__.py",
+   "language": "python",
+   "is_test": false,
+   "loc": 1
+  },
+  {
+   "id": "service:collect.analytics-example.net",
+   "type": "external_service",
+   "label": "collect.analytics-example.net"
+  },
+  {
+   "id": "sink:network:requests.post",
+   "type": "sensitive_call",
+   "label": "requests.post",
+   "category": "network"
+  },
+  {
+   "id": "file:app/utils/__init__.py",
+   "type": "source_module",
+   "label": "app/utils/__init__.py",
+   "language": "python",
+   "is_test": false,
+   "loc": 1
+  },
+  {
+   "id": "file:config/dev.js",
+   "type": "source_module",
+   "label": "config/dev.js",
+   "language": "javascript",
+   "is_test": false,
+   "loc": 2,
+   "risk": "P1",
+   "findings": [
+    "d6508c147497"
+   ]
+  },
+  {
+   "id": "file:tests/test_api.py",
+   "type": "source_module",
+   "label": "tests/test_api.py",
+   "language": "python",
+   "is_test": true,
+   "loc": 6
+  },
+  {
+   "id": "func:tests/test_api.py::test_app_exists",
+   "type": "function",
+   "label": "test_app_exists",
+   "file": "tests/test_api.py"
+  },
+  {
+   "id": "dockerfile:Dockerfile",
+   "type": "dockerfile",
+   "label": "Dockerfile",
+   "risk": "P1",
+   "findings": [
+    "7e5a6bd29f76",
+    "d638be0a0393"
+   ]
+  },
+  {
+   "id": "image:node:latest",
+   "type": "image",
+   "label": "node:latest",
+   "tag": "latest",
+   "risk": "P3",
+   "findings": [
+    "6f587314ff39"
+   ]
+  },
+  {
+   "id": "workflow:.github/workflows/ci.yml",
+   "type": "workflow",
+   "label": ".github/workflows/ci.yml",
+   "triggers": [
+    "pull_request_target"
+   ],
+   "risk": "P1",
+   "findings": [
+    "bb05fb65eb18",
+    "9ea1705d151b",
+    "dd4c6256791b"
+   ]
+  },
+  {
+   "id": "action:actions/checkout@v4",
+   "type": "action",
+   "label": "actions/checkout@v4",
+   "pinned_to_sha": false,
+   "risk": "P3",
+   "findings": [
+    "5e718d7e89f3"
+   ]
+  },
+  {
+   "id": "action:actions/setup-node@8f4b7f84864484a7bf31766abe9204da3cbe65b3",
+   "type": "action",
+   "label": "actions/setup-node@8f4b7f84864484a7bf31766abe9204da3cbe65b3",
+   "pinned_to_sha": true
+  },
+  {
+   "id": "compose:app",
+   "type": "compose_service",
+   "label": "app"
+  },
+  {
+   "id": "compose:db",
+   "type": "compose_service",
+   "label": "db"
+  },
+  {
+   "id": "image:postgres:16",
+   "type": "image",
+   "label": "postgres:16",
+   "tag": "16",
+   "risk": "P3",
+   "findings": [
+    "e8a6cbf13c93"
+   ]
+  }
+ ],
+ "edges": [
+  {
+   "s": "project:guardian-fixture",
+   "t": "pkg:npm/lodash",
+   "rel": "DECLARES",
+   "status": "declared",
+   "loc": "package.json:11"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "pkg:npm/mkdirp",
+   "rel": "DECLARES",
+   "status": "declared",
+   "loc": "package.json:12"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "pkg:npm/debug",
+   "rel": "DECLARES",
+   "status": "declared",
+   "loc": "package.json:13"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "pkg:npm/lodahs",
+   "rel": "DECLARES",
+   "status": "declared",
+   "loc": "package.json:14"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "pkg:pypi/pytest",
+   "rel": "DECLARES",
+   "status": "declared",
+   "loc": "requirements-dev.txt:2"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "pkg:pypi/flask",
+   "rel": "DECLARES",
+   "status": "declared",
+   "loc": "requirements.txt:1"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "pkg:pypi/stripe",
+   "rel": "DECLARES",
+   "status": "declared",
+   "loc": "requirements.txt:2"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "pkg:pypi/sqlalchemy",
+   "rel": "DECLARES",
+   "status": "declared",
+   "loc": "requirements.txt:3"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "pkg:pypi/pyyaml",
+   "rel": "DECLARES",
+   "status": "declared",
+   "loc": "requirements.txt:4"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "pkg:pypi/requests",
+   "rel": "DECLARES",
+   "status": "declared",
+   "loc": "requirements.txt:5"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "pkg:pypi/colorama",
+   "rel": "DECLARES",
+   "status": "declared",
+   "loc": "requirements.txt:6"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "file:index.js",
+   "rel": "CONTAINS",
+   "status": "statically-observed"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "file:app/db.py",
+   "rel": "CONTAINS",
+   "status": "statically-observed"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "file:app/models.py",
+   "rel": "CONTAINS",
+   "status": "statically-observed"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "file:app/__init__.py",
+   "rel": "CONTAINS",
+   "status": "statically-observed"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "file:app/api/routes.py",
+   "rel": "CONTAINS",
+   "status": "statically-observed"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "route:POST /checkout",
+   "rel": "EXPOSES",
+   "status": "statically-observed",
+   "loc": "app/api/routes.py:9"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "file:app/api/__init__.py",
+   "rel": "CONTAINS",
+   "status": "statically-observed"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "file:app/config/load.py",
+   "rel": "CONTAINS",
+   "status": "statically-observed"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "file:app/config/__init__.py",
+   "rel": "CONTAINS",
+   "status": "statically-observed"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "file:app/payments/client.py",
+   "rel": "CONTAINS",
+   "status": "statically-observed"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "file:app/payments/service.py",
+   "rel": "CONTAINS",
+   "status": "statically-observed"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "file:app/payments/__init__.py",
+   "rel": "CONTAINS",
+   "status": "statically-observed"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "file:app/utils/helpers.py",
+   "rel": "CONTAINS",
+   "status": "statically-observed"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "file:app/utils/__init__.py",
+   "rel": "CONTAINS",
+   "status": "statically-observed"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "file:config/dev.js",
+   "rel": "CONTAINS",
+   "status": "statically-observed"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "file:tests/test_api.py",
+   "rel": "CONTAINS",
+   "status": "statically-observed"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "dockerfile:Dockerfile",
+   "rel": "BUILT_BY",
+   "status": "verified"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "workflow:.github/workflows/ci.yml",
+   "rel": "CI",
+   "status": "verified"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "compose:app",
+   "rel": "RUNS_SERVICE",
+   "status": "verified",
+   "loc": "docker-compose.yml:2"
+  },
+  {
+   "s": "project:guardian-fixture",
+   "t": "compose:db",
+   "rel": "RUNS_SERVICE",
+   "status": "verified",
+   "loc": "docker-compose.yml:8"
+  },
+  {
+   "s": "pkg:npm/lodash",
+   "t": "pkg:npm/lodash@4.17.21",
+   "rel": "HAS_ARTIFACT",
+   "status": "verified"
+  },
+  {
+   "s": "pkg:npm/mkdirp",
+   "t": "pkg:npm/mkdirp@0.5.1",
+   "rel": "HAS_ARTIFACT",
+   "status": "verified"
+  },
+  {
+   "s": "pkg:npm/debug",
+   "t": "pkg:npm/debug@4.3.4",
+   "rel": "HAS_ARTIFACT",
+   "status": "verified"
+  },
+  {
+   "s": "pkg:npm/lodahs",
+   "t": "pkg:npm/lodahs@1.0.0",
+   "rel": "HAS_ARTIFACT",
+   "status": "verified"
+  },
+  {
+   "s": "pkg:pypi/pytest",
+   "t": "pkg:pypi/pytest@7.0.0",
+   "rel": "HAS_ARTIFACT",
+   "status": "verified"
+  },
+  {
+   "s": "pkg:pypi/flask",
+   "t": "pkg:pypi/flask@2.0.1",
+   "rel": "HAS_ARTIFACT",
+   "status": "verified"
+  },
+  {
+   "s": "pkg:pypi/stripe",
+   "t": "pkg:pypi/stripe@2.60.0",
+   "rel": "HAS_ARTIFACT",
+   "status": "verified"
+  },
+  {
+   "s": "pkg:pypi/sqlalchemy",
+   "t": "pkg:pypi/sqlalchemy@1.4.20",
+   "rel": "HAS_ARTIFACT",
+   "status": "verified"
+  },
+  {
+   "s": "pkg:pypi/pyyaml",
+   "t": "pkg:pypi/pyyaml@5.4",
+   "rel": "HAS_ARTIFACT",
+   "status": "verified"
+  },
+  {
+   "s": "pkg:pypi/requests",
+   "t": "pkg:pypi/requests@2.25.1",
+   "rel": "HAS_ARTIFACT",
+   "status": "verified"
+  },
+  {
+   "s": "pkg:pypi/colorama",
+   "t": "pkg:pypi/colorama@0.4.4",
+   "rel": "HAS_ARTIFACT",
+   "status": "verified"
+  },
+  {
+   "s": "pkg:npm/debug@4.3.4",
+   "t": "pkg:npm/ms@2.1.2",
+   "rel": "DEPENDS_ON",
+   "status": "verified"
+  },
+  {
+   "s": "pkg:npm/minimist",
+   "t": "pkg:npm/minimist@0.0.8",
+   "rel": "HAS_ARTIFACT",
+   "status": "verified"
+  },
+  {
+   "s": "pkg:npm/mkdirp@0.5.1",
+   "t": "pkg:npm/minimist@0.0.8",
+   "rel": "DEPENDS_ON",
+   "status": "verified"
+  },
+  {
+   "s": "pkg:npm/ms",
+   "t": "pkg:npm/ms@2.1.2",
+   "rel": "HAS_ARTIFACT",
+   "status": "verified"
+  },
+  {
+   "s": "file:index.js",
+   "t": "pkg:npm/lodash",
+   "rel": "IMPORTS",
+   "status": "statically-observed",
+   "loc": "index.js:1"
+  },
+  {
+   "s": "file:index.js",
+   "t": "pkg:npm/mkdirp",
+   "rel": "IMPORTS",
+   "status": "statically-observed",
+   "loc": "index.js:2"
+  },
+  {
+   "s": "file:app/db.py",
+   "t": "pkg:pypi/sqlalchemy",
+   "rel": "IMPORTS",
+   "status": "statically-observed",
+   "loc": "app/db.py:3"
+  },
+  {
+   "s": "file:app/db.py",
+   "t": "func:app/db.py::<module>",
+   "rel": "DEFINES",
+   "status": "statically-observed"
+  },
+  {
+   "s": "func:app/db.py::<module>",
+   "t": "pkg:pypi/sqlalchemy",
+   "rel": "USES",
+   "status": "statically-observed",
+   "loc": "app/db.py:5"
+  },
+  {
+   "s": "func:app/db.py::<module>",
+   "t": "env:DATABASE_URL",
+   "rel": "READS_ENV",
+   "status": "statically-observed",
+   "loc": "app/db.py:5"
+  },
+  {
+   "s": "file:app/models.py",
+   "t": "pkg:pypi/sqlalchemy",
+   "rel": "IMPORTS",
+   "status": "statically-observed",
+   "loc": "app/models.py:1"
+  },
+  {
+   "s": "file:app/models.py",
+   "t": "func:app/models.py::<module>",
+   "rel": "DEFINES",
+   "status": "statically-observed"
+  },
+  {
+   "s": "file:app/models.py",
+   "t": "func:app/models.py::Order",
+   "rel": "DEFINES",
+   "status": "statically-observed"
+  },
+  {
+   "s": "func:app/models.py::<module>",
+   "t": "pkg:pypi/sqlalchemy",
+   "rel": "USES",
+   "status": "statically-observed",
+   "loc": "app/models.py:4"
+  },
+  {
+   "s": "func:app/models.py::Order",
+   "t": "pkg:pypi/sqlalchemy",
+   "rel": "USES",
+   "status": "statically-observed",
+   "loc": "app/models.py:9"
+  },
+  {
+   "s": "func:app/models.py::Order",
+   "t": "table:orders",
+   "rel": "MAPS_TO",
+   "status": "statically-observed"
+  },
+  {
+   "s": "file:app/__init__.py",
+   "t": "pkg:pypi/flask",
+   "rel": "IMPORTS",
+   "status": "statically-observed",
+   "loc": "app/__init__.py:2"
+  },
+  {
+   "s": "file:app/__init__.py",
+   "t": "file:app/api/routes.py",
+   "rel": "IMPORTS_MODULE",
+   "status": "statically-observed"
+  },
+  {
+   "s": "file:app/__init__.py",
+   "t": "func:app/__init__.py::<module>",
+   "rel": "DEFINES",
+   "status": "statically-observed"
+  },
+  {
+   "s": "file:app/api/routes.py",
+   "t": "pkg:pypi/flask",
+   "rel": "IMPORTS",
+   "status": "statically-observed",
+   "loc": "app/api/routes.py:2"
+  },
+  {
+   "s": "file:app/api/routes.py",
+   "t": "file:app/__init__.py",
+   "rel": "IMPORTS_MODULE",
+   "status": "statically-observed"
+  },
+  {
+   "s": "file:app/api/routes.py",
+   "t": "file:app/payments/service.py",
+   "rel": "IMPORTS_MODULE",
+   "status": "statically-observed"
+  },
+  {
+   "s": "file:app/api/routes.py",
+   "t": "file:app/utils/helpers.py",
+   "rel": "IMPORTS_MODULE",
+   "status": "statically-observed"
+  },
+  {
+   "s": "file:app/api/routes.py",
+   "t": "func:app/api/routes.py::checkout",
+   "rel": "DEFINES",
+   "status": "statically-observed"
+  },
+  {
+   "s": "file:app/api/routes.py",
+   "t": "func:app/api/routes.py::<module>",
+   "rel": "DEFINES",
+   "status": "statically-observed"
+  },
+  {
+   "s": "func:app/__init__.py::<module>",
+   "t": "pkg:pypi/flask",
+   "rel": "USES",
+   "status": "statically-observed",
+   "loc": "app/__init__.py:4"
+  },
+  {
+   "s": "file:app/payments/service.py",
+   "t": "pkg:pypi/sqlalchemy",
+   "rel": "IMPORTS",
+   "status": "statically-observed",
+   "loc": "app/payments/service.py:2"
+  },
+  {
+   "s": "file:app/payments/service.py",
+   "t": "file:app/db.py",
+   "rel": "IMPORTS_MODULE",
+   "status": "statically-observed"
+  },
+  {
+   "s": "file:app/payments/service.py",
+   "t": "file:app/models.py",
+   "rel": "IMPORTS_MODULE",
+   "status": "statically-observed"
+  },
+  {
+   "s": "file:app/payments/service.py",
+   "t": "file:app/payments/client.py",
+   "rel": "IMPORTS_MODULE",
+   "status": "statically-observed"
+  },
+  {
+   "s": "file:app/payments/service.py",
+   "t": "func:app/payments/service.py::charge",
+   "rel": "DEFINES",
+   "status": "statically-observed"
+  },
+  {
+   "s": "file:app/utils/helpers.py",
+   "t": "pkg:pypi/requests",
+   "rel": "IMPORTS",
+   "status": "statically-observed",
+   "loc": "app/utils/helpers.py:2"
+  },
+  {
+   "s": "file:app/utils/helpers.py",
+   "t": "func:app/utils/helpers.py::send_event",
+   "rel": "DEFINES",
+   "status": "statically-observed"
+  },
+  {
+   "s": "func:app/api/routes.py::checkout",
+   "t": "func:app/payments/service.py::charge",
+   "rel": "CALLS",
+   "status": "statically-observed",
+   "loc": "app/api/routes.py:12"
+  },
+  {
+   "s": "func:app/api/routes.py::checkout",
+   "t": "func:app/utils/helpers.py::send_event",
+   "rel": "CALLS",
+   "status": "statically-observed",
+   "loc": "app/api/routes.py:13"
+  },
+  {
+   "s": "func:app/api/routes.py::checkout",
+   "t": "pkg:pypi/flask",
+   "rel": "USES",
+   "status": "statically-observed",
+   "loc": "app/api/routes.py:14"
+  },
+  {
+   "s": "func:app/payments/service.py::charge",
+   "t": "func:app/payments/client.py::get_client",
+   "rel": "CALLS",
+   "status": "statically-observed",
+   "loc": "app/payments/service.py:10"
+  },
+  {
+   "s": "func:app/payments/service.py::charge",
+   "t": "pkg:pypi/sqlalchemy",
+   "rel": "USES",
+   "status": "statically-observed",
+   "loc": "app/payments/service.py:12"
+  },
+  {
+   "s": "func:app/payments/service.py::charge",
+   "t": "func:app/models.py::Order",
+   "rel": "CALLS",
+   "status": "statically-observed",
+   "loc": "app/payments/service.py:13"
+  },
+  {
+   "s": "func:app/payments/service.py::charge",
+   "t": "table:orders",
+   "rel": "WRITES_DB",
+   "status": "statically-observed",
+   "loc": "app/payments/service.py:14"
+  },
+  {
+   "s": "func:app/payments/service.py::charge",
+   "t": "table:<unknown>",
+   "rel": "WRITES_DB",
+   "status": "statically-observed",
+   "loc": "app/payments/service.py:15"
+  },
+  {
+   "s": "func:app/utils/helpers.py::send_event",
+   "t": "pkg:pypi/requests",
+   "rel": "USES",
+   "status": "statically-observed",
+   "loc": "app/utils/helpers.py:6"
+  },
+  {
+   "s": "func:app/utils/helpers.py::send_event",
+   "t": "service:collect.analytics-example.net",
+   "rel": "CONTACTS",
+   "status": "statically-observed",
+   "loc": "app/utils/helpers.py:6"
+  },
+  {
+   "s": "func:app/utils/helpers.py::send_event",
+   "t": "sink:network:requests.post",
+   "rel": "SENSITIVE_CALL",
+   "status": "statically-observed",
+   "loc": "app/utils/helpers.py:6"
+  },
+  {
+   "s": "route:POST /checkout",
+   "t": "func:app/api/routes.py::checkout",
+   "rel": "HANDLED_BY",
+   "status": "statically-observed",
+   "loc": "app/api/routes.py:9"
+  },
+  {
+   "s": "input:request.json",
+   "t": "func:app/api/routes.py::checkout",
+   "rel": "INPUT_TO",
+   "status": "statically-observed",
+   "loc": "app/api/routes.py:11"
+  },
+  {
+   "s": "file:app/config/load.py",
+   "t": "pkg:pypi/pyyaml",
+   "rel": "IMPORTS",
+   "status": "statically-observed",
+   "loc": "app/config/load.py:1"
+  },
+  {
+   "s": "file:app/config/load.py",
+   "t": "func:app/config/load.py::load_settings",
+   "rel": "DEFINES",
+   "status": "statically-observed"
+  },
+  {
+   "s": "func:app/config/load.py::load_settings",
+   "t": "pkg:pypi/pyyaml",
+   "rel": "USES",
+   "status": "statically-observed",
+   "loc": "app/config/load.py:6"
+  },
+  {
+   "s": "func:app/config/load.py::load_settings",
+   "t": "sink:deserialize:yaml.load",
+   "rel": "SENSITIVE_CALL",
+   "status": "statically-observed",
+   "loc": "app/config/load.py:6"
+  },
+  {
+   "s": "file:app/payments/client.py",
+   "t": "pkg:pypi/stripe",
+   "rel": "IMPORTS",
+   "status": "statically-observed",
+   "loc": "app/payments/client.py:4"
+  },
+  {
+   "s": "file:app/payments/client.py",
+   "t": "func:app/payments/client.py::get_client",
+   "rel": "DEFINES",
+   "status": "statically-observed"
+  },
+  {
+   "s": "func:app/payments/client.py::get_client",
+   "t": "pkg:pypi/stripe",
+   "rel": "USES",
+   "status": "statically-observed",
+   "loc": "app/payments/client.py:8"
+  },
+  {
+   "s": "func:app/payments/client.py::get_client",
+   "t": "env:STRIPE_KEY",
+   "rel": "READS_ENV",
+   "status": "statically-observed",
+   "loc": "app/payments/client.py:8"
+  },
+  {
+   "s": "func:app/payments/client.py::get_client",
+   "t": "service:Stripe",
+   "rel": "CONTACTS",
+   "status": "statically-observed",
+   "loc": "app/payments/client.py:4"
+  },
+  {
+   "s": "file:tests/test_api.py",
+   "t": "file:app/__init__.py",
+   "rel": "IMPORTS_MODULE",
+   "status": "statically-observed"
+  },
+  {
+   "s": "file:tests/test_api.py",
+   "t": "func:tests/test_api.py::test_app_exists",
+   "rel": "DEFINES",
+   "status": "statically-observed"
+  },
+  {
+   "s": "dockerfile:Dockerfile",
+   "t": "image:node:latest",
+   "rel": "BASED_ON",
+   "status": "verified",
+   "loc": "Dockerfile:1"
+  },
+  {
+   "s": "workflow:.github/workflows/ci.yml",
+   "t": "action:actions/checkout@v4",
+   "rel": "USES_ACTION",
+   "status": "verified",
+   "loc": ".github/workflows/ci.yml:8"
+  },
+  {
+   "s": "workflow:.github/workflows/ci.yml",
+   "t": "action:actions/setup-node@8f4b7f84864484a7bf31766abe9204da3cbe65b3",
+   "rel": "USES_ACTION",
+   "status": "verified",
+   "loc": ".github/workflows/ci.yml:9"
+  },
+  {
+   "s": "compose:db",
+   "t": "image:postgres:16",
+   "rel": "BASED_ON",
+   "status": "verified",
+   "loc": "docker-compose.yml:8"
+  }
+ ],
+ "blast": {
+  "pkg:npm/debug@4.3.4": {
+   "dependents": [],
+   "introducers": [
+    "pkg:npm/debug@4.3.4"
+   ],
+   "package": "pkg:npm/debug",
+   "files": [],
+   "functions": [],
+   "routes": [],
+   "exposed": []
+  },
+  "pkg:npm/lodahs@1.0.0": {
+   "dependents": [],
+   "introducers": [
+    "pkg:npm/lodahs@1.0.0"
+   ],
+   "package": "pkg:npm/lodahs",
+   "files": [],
+   "functions": [],
+   "routes": [],
+   "exposed": []
+  },
+  "pkg:npm/lodash@4.17.21": {
+   "dependents": [],
+   "introducers": [
+    "pkg:npm/lodash@4.17.21"
+   ],
+   "package": "pkg:npm/lodash",
+   "files": [
+    "file:index.js"
+   ],
+   "functions": [],
+   "routes": [],
+   "exposed": []
+  },
+  "pkg:npm/minimist@0.0.8": {
+   "dependents": [
+    "pkg:npm/mkdirp@0.5.1"
+   ],
+   "introducers": [
+    "pkg:npm/mkdirp@0.5.1"
+   ],
+   "package": "pkg:npm/minimist",
+   "files": [
+    "file:index.js"
+   ],
+   "functions": [],
+   "routes": [],
+   "exposed": []
+  },
+  "pkg:npm/mkdirp@0.5.1": {
+   "dependents": [],
+   "introducers": [
+    "pkg:npm/mkdirp@0.5.1"
+   ],
+   "package": "pkg:npm/mkdirp",
+   "files": [
+    "file:index.js"
+   ],
+   "functions": [],
+   "routes": [],
+   "exposed": []
+  },
+  "pkg:npm/ms@2.1.2": {
+   "dependents": [
+    "pkg:npm/debug@4.3.4"
+   ],
+   "introducers": [
+    "pkg:npm/debug@4.3.4"
+   ],
+   "package": "pkg:npm/ms",
+   "files": [],
+   "functions": [],
+   "routes": [],
+   "exposed": []
+  },
+  "pkg:pypi/colorama@0.4.4": {
+   "dependents": [],
+   "introducers": [
+    "pkg:pypi/colorama@0.4.4"
+   ],
+   "package": "pkg:pypi/colorama",
+   "files": [],
+   "functions": [],
+   "routes": [],
+   "exposed": []
+  },
+  "pkg:pypi/flask@2.0.1": {
+   "dependents": [],
+   "introducers": [
+    "pkg:pypi/flask@2.0.1"
+   ],
+   "package": "pkg:pypi/flask",
+   "files": [
+    "file:app/__init__.py",
+    "file:app/api/routes.py"
+   ],
+   "functions": [
+    "func:app/__init__.py::<module>",
+    "func:app/api/routes.py::<module>",
+    "func:app/api/routes.py::checkout"
+   ],
+   "routes": [
+    "route:POST /checkout"
+   ],
+   "exposed": []
+  },
+  "pkg:pypi/pytest@7.0.0": {
+   "dependents": [],
+   "introducers": [
+    "pkg:pypi/pytest@7.0.0"
+   ],
+   "package": "pkg:pypi/pytest",
+   "files": [],
+   "functions": [],
+   "routes": [],
+   "exposed": []
+  },
+  "pkg:pypi/pyyaml@5.4": {
+   "dependents": [],
+   "introducers": [
+    "pkg:pypi/pyyaml@5.4"
+   ],
+   "package": "pkg:pypi/pyyaml",
+   "files": [
+    "file:app/config/load.py"
+   ],
+   "functions": [
+    "func:app/config/load.py::load_settings"
+   ],
+   "routes": [],
+   "exposed": []
+  },
+  "pkg:pypi/requests@2.25.1": {
+   "dependents": [],
+   "introducers": [
+    "pkg:pypi/requests@2.25.1"
+   ],
+   "package": "pkg:pypi/requests",
+   "files": [
+    "file:app/utils/helpers.py"
+   ],
+   "functions": [
+    "func:app/api/routes.py::checkout",
+    "func:app/utils/helpers.py::send_event"
+   ],
+   "routes": [
+    "route:POST /checkout"
+   ],
+   "exposed": [
+    "service:collect.analytics-example.net"
+   ]
+  },
+  "pkg:pypi/sqlalchemy@1.4.20": {
+   "dependents": [],
+   "introducers": [
+    "pkg:pypi/sqlalchemy@1.4.20"
+   ],
+   "package": "pkg:pypi/sqlalchemy",
+   "files": [
+    "file:app/db.py",
+    "file:app/models.py",
+    "file:app/payments/service.py"
+   ],
+   "functions": [
+    "func:app/api/routes.py::checkout",
+    "func:app/db.py::<module>",
+    "func:app/models.py::<module>",
+    "func:app/models.py::Order",
+    "func:app/payments/service.py::charge"
+   ],
+   "routes": [
+    "route:POST /checkout"
+   ],
+   "exposed": [
+    "env:DATABASE_URL",
+    "table:<unknown>",
+    "table:orders"
+   ]
+  },
+  "pkg:pypi/stripe@2.60.0": {
+   "dependents": [],
+   "introducers": [
+    "pkg:pypi/stripe@2.60.0"
+   ],
+   "package": "pkg:pypi/stripe",
+   "files": [
+    "file:app/payments/client.py"
+   ],
+   "functions": [
+    "func:app/api/routes.py::checkout",
+    "func:app/payments/client.py::get_client",
+    "func:app/payments/service.py::charge"
+   ],
+   "routes": [
+    "route:POST /checkout"
+   ],
+   "exposed": [
+    "env:STRIPE_KEY",
+    "service:Stripe",
+    "table:<unknown>",
+    "table:orders"
+   ]
+  }
+ },
+ "registries": {
+  "registry.npmjs.org": [
+   "pkg:npm/debug@4.3.4",
+   "pkg:npm/lodahs@1.0.0",
+   "pkg:npm/minimist@0.0.8",
+   "pkg:npm/mkdirp@0.5.1",
+   "pkg:npm/ms@2.1.2"
+  ],
+  "deps.example.invalid": [
+   "pkg:npm/lodash@4.17.21"
+  ],
+  "pypi.org": [
+   "pkg:pypi/colorama@0.4.4",
+   "pkg:pypi/flask@2.0.1",
+   "pkg:pypi/pytest@7.0.0",
+   "pkg:pypi/pyyaml@5.4",
+   "pkg:pypi/requests@2.25.1",
+   "pkg:pypi/sqlalchemy@1.4.20",
+   "pkg:pypi/stripe@2.60.0"
+  ]
+ },
+ "ecosystems": [
+  "npm",
+  "pypi"
+ ]
+}

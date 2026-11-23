@@ -1,0 +1,102 @@
+[
+ {
+  "node": "ingest",
+  "status": "ok",
+  "message": "guardian-fixture @ df87b2a5e64e",
+  "seconds": 0.21
+ },
+ {
+  "node": "cartographer",
+  "status": "ok",
+  "message": "11 declared deps, 3 manifests, 1 Dockerfiles, 1 workflows, 5 history commits",
+  "seconds": 2.13
+ },
+ {
+  "node": "code_index",
+  "status": "ok",
+  "message": "15/15 files parsed, 4 internal calls resolved",
+  "seconds": 0.13
+ },
+ {
+  "node": "resolver_sbom",
+  "status": "degraded",
+  "message": "13 components, 2 edges, confidence low",
+  "seconds": 4.4
+ },
+ {
+  "node": "graph",
+  "status": "ok",
+  "message": "71 nodes, 103 edges (2 DEPENDS_ON, 10 IMPORTS, 4 CALLS)",
+  "seconds": 0.02
+ },
+ {
+  "node": "dossier_agent",
+  "status": "ok",
+  "message": "web application (flask); exposure=network_facing; by rule-based",
+  "seconds": 0.02
+ },
+ {
+  "node": "supervisor",
+  "status": "ok",
+  "message": "dispatching vuln_intel, change_anomaly, package_signals, container_ci, secrets, discrepancies",
+  "seconds": 0
+ },
+ {
+  "node": "discrepancies",
+  "status": "ok",
+  "message": "3 finding(s)",
+  "seconds": 0.1
+ },
+ {
+  "node": "package_signals",
+  "status": "ok",
+  "message": "3 finding(s)",
+  "seconds": 0.11
+ },
+ {
+  "node": "secrets",
+  "status": "ok",
+  "message": "1 finding(s)",
+  "seconds": 0.14
+ },
+ {
+  "node": "container_ci",
+  "status": "ok",
+  "message": "8 finding(s)",
+  "seconds": 0.21
+ },
+ {
+  "node": "change_anomaly",
+  "status": "ok",
+  "message": "6 finding(s)",
+  "seconds": 1.09
+ },
+ {
+  "node": "vuln_intel",
+  "status": "ok",
+  "message": "13 finding(s)",
+  "seconds": 10.92
+ },
+ {
+  "node": "correlator",
+  "status": "ok",
+  "message": "34 raw -> 34 findings; P0:5, P1:9, P2:6, P3:14",
+  "seconds": 0.23
+ },
+ {
+  "node": "evidence_agent",
+  "status": "ok",
+  "message": "LLM not configured (set GROQ_API_KEY); rule-based explanations; 34 rule-based; 0 unverified claim(s) removed",
+  "seconds": 0.26
+ },
+ {
+  "node": "report",
+  "status": "ok",
+  "message": "/work/guardian-fixture\\20261123-233524-897e16\\report.json",
+  "seconds": 0.1
+ },
+ {
+  "node": "run",
+  "status": "done"
+ }
+]

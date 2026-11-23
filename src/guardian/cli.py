@@ -88,12 +88,16 @@ def fixture(dest: Path = typer.Argument(Path("output/fixtures"))):
 
 
 @app.command()
-def serve(host: str = "127.0.0.1", port: int = 8000, out: Path = Path("output")):
-    """Start the HTTP API (POST /runs, GET /runs/{id}/report ...)."""
+def serve(host: str = "127.0.0.1", port: int = 8000, out: Path = Path("output"),
+          web: Path | None = None):
+    """Start the HTTP API and, if built, the web dashboard (web/dist)."""
     import uvicorn
 
     from .api import create_app
-    uvicorn.run(create_app(out), host=host, port=port)
+    if web is None:
+        default = Path(__file__).resolve().parents[2] / "web" / "dist"
+        web = default if default.exists() else None
+    uvicorn.run(create_app(out, web), host=host, port=port)
 
 
 if __name__ == "__main__":

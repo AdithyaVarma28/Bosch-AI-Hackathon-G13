@@ -1,0 +1,11 @@
+[
+ {
+  "run_id": "20261123-233524-897e16",
+  "repo_name": "guardian-fixture",
+  "target": "/work/guardian-fixture",
+  "status": "done",
+  "commit": "df87b2a5e64ecef617911cdb8a88084d74831dd3",
+  "finished_at": "2026-11-23T18:05:47Z",
+  "error": null
+ }
+]

