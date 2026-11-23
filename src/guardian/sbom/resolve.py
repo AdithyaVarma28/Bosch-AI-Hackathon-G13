@@ -102,5 +102,47 @@ def parse_pip_report(manifest_rel: str, report: dict) -> ParsedLock:
     return out
 
 
+MAVEN_IMAGE = "maven:3.9.9-eclipse-temurin-21"
+
+
+def resolve_maven(repo: Path, manifest_rel: str, runner: Runner = default_runner) -> ParsedLock:
+    """`mvn dependency:tree` in a container on a copy of the POM only (no sources, so no project code to run)."""
+    _sandbox(runner)
+    if not manifest_rel.endswith("pom.xml"):
+        raise ToolFailed("Gradle projects need a committed gradle.lockfile (no sandboxed Gradle resolver on Day 1)")
+    with tempfile.TemporaryDirectory(prefix="guardian-mvn-") as tmp:
+        shutil.copy2(Path(repo) / manifest_rel, Path(tmp) / "pom.xml")
+        cmd = ["docker", "run", "--rm", "-v", f"{tmp}:/w", "-w", "/w", MAVEN_IMAGE, "mvn", "-B", "-q",
+               "org.apache.maven.plugins:maven-dependency-plugin:3.8.1:tree", "-DoutputType=json", "-DoutputFile=/w/tree.json"]
+        r = runner(cmd, None, 1200)
+        tree = Path(tmp) / "tree.json"
+        if r.returncode != 0 or not tree.exists():
+            raise ToolFailed(f"maven resolution failed: {(r.stderr or r.stdout).strip()[:300]}")
+        data = json.loads(tree.read_text(encoding="utf-8"))
+    out = ParsedLock(manifest_rel, "maven")
+
+    def walk(node: dict, parent: str | None, depth: int) -> None:
+        name = f"{node.get('groupId')}:{node.get('artifactId')}"
+        purl = make_purl("maven", name, node.get("version"))
+        if depth > 0:
+            scope = {"test": "dev", "provided": "build", "system": "build"}.get(node.get("scope", ""), "prod")
+            if not any(c.purl == purl for c in out.components):
+                out.components.append(Component(purl=purl, name=name, version=node.get("version"), ecosystem="maven",
+                                                scope=scope, direct=depth == 1, origin=Origin(registry="maven"),
+                                                source="mvn-resolve", seen_by=["mvn-resolve"]))
+            if parent:
+                out.edges.append(DepEdge(src=parent, dst=purl, source="mvn-resolve"))
+        for ch in node.get("children") or []:
+            walk(ch, purl if depth > 0 else None, depth + 1)
+    walk(data, None, 0)
+    return out
+
+
 def resolve_without_lockfile(repo: Path, manifest_rel: str, ecosystem: str, runner: Runner = default_runner) -> ParsedLock:
-    return resolve_npm(repo, manifest_rel, runner) if ecosystem == "npm" else resolve_pip(repo, manifest_rel, runner)
+    if ecosystem == "npm":
+        return resolve_npm(repo, manifest_rel, runner)
+    if ecosystem == "pypi":
+        return resolve_pip(repo, manifest_rel, runner)
+    if ecosystem == "maven":
+        return resolve_maven(repo, manifest_rel, runner)
+    raise ToolFailed(f"no sandboxed resolver for {ecosystem}; commit its lockfile for full transitive data")

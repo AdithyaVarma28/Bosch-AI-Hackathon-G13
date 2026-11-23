@@ -6,7 +6,7 @@ import json
 from ..context import RunContext
 from ..llm import LLMUnavailable, fence
 from ..models import Claim, Dossier
-from .verifier import safe_claim, verify_claims
+from .verifier import guard_llm_claims, safe_claim, safe_text, verify_claims
 
 SYSTEM = """You are the Dossier agent of a software supply-chain scanner.
 You receive FACTS (already extracted deterministically, each with an evidence id) and repository text inside <repo_data>.
@@ -43,9 +43,11 @@ def rule_dossier(ctx: RunContext) -> Dossier:
     claims: list[Claim] = []
     frameworks = sorted({r.framework for cf in (ctx.code_index.files if ctx.code_index else []) for r in cf.routes})
     imports = {i.distribution or i.name for cf in (ctx.code_index.files if ctx.code_index else []) for i in cf.imports if i.kind == "external"}
+    langs = ctx.code_index.coverage.languages if ctx.code_index else {}
+    main_lang = max(langs, key=langs.get) if langs else None
     app_type = ("web application (" + ", ".join(frameworks) + ")") if frameworks else \
-        "Node.js application" if "javascript" in {cf.language for cf in (ctx.code_index.files if ctx.code_index else [])} and not imports & {"flask", "django"} \
-        else "library or tool"
+        f"{main_lang} application or library" if main_lang else "library or tool"
+    _ = imports
     exposure, reasons = detect_exposure(ctx)
     for h in (facts.lockfiles if facts else []):
         if h.evidence_id:
@@ -96,15 +98,22 @@ def build_dossier(ctx: RunContext) -> Dossier:
         return base
     llm_claims = [c for c in (safe_claim(x.get("text", ""), x.get("type", "inference"), x.get("evidence_ids", []),
                                          x.get("confidence", "medium")) for x in out.get("claims", []) if isinstance(x, dict)) if c]
-    verified = [c for c in verify_claims(llm_claims, ctx.store) if c.verifier_status != "rejected"]
+    verified = [c for c in guard_llm_claims(verify_claims(llm_claims, ctx.store)) if c.verifier_status != "rejected"]
     base_ev = {tuple(sorted(c.evidence_ids)) for c in base.claims}
     new_claims = [c for c in verified if tuple(sorted(c.evidence_ids)) not in base_ev]  # drop restated rule claims
     exposure = out.get("exposure") if out.get("exposure") in ("network_facing", "cli_or_library", "unknown") else base.exposure
     if base.exposure != "unknown":
         exposure = base.exposure  # deterministic exposure evidence wins over model opinion
-    limits = base.limits + [str(x)[:200] for x in (out.get("limits") or []) if isinstance(x, str)][:5]
+    limits = base.limits + [str(x)[:200] for x in (out.get("limits") or []) if isinstance(x, str) and safe_text(x)][:5]
     if len(llm_claims) != len(verified):
         limits.append(f"{len(llm_claims) - len(verified)} unverified LLM claim(s) removed by the Verifier")
-    return Dossier(app_type=str(out.get("app_type") or base.app_type)[:120], exposure=exposure,
-                   summary=str(out.get("summary") or base.summary)[:800], claims=base.claims + new_claims,
+    summary = str(out.get("summary") or "")[:800]
+    if not safe_text(summary):
+        if summary:
+            limits.append("LLM summary discarded: it tried to dismiss findings")
+        summary = base.summary
+    app_type = str(out.get("app_type") or base.app_type)[:120]
+    if not safe_text(app_type) or base.app_type.startswith("web application"):
+        app_type = base.app_type  # routes found in code are evidence; the model's label does not override them
+    return Dossier(app_type=app_type, exposure=exposure, summary=summary, claims=base.claims + new_claims,
                    limits=limits, generated_by=ctx.llm.name)

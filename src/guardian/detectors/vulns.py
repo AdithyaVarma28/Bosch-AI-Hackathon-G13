@@ -8,14 +8,14 @@ import httpx
 from ..context import RunContext
 from ..httpcache import CacheMiss, CachedHttp
 from ..models import Finding
-from ..purl import package_key
+from ..purl import ECOSYSTEMS, package_key
 from .osv import OsvClient, cve_aliases, fixed_versions, load_epss, load_kev, severity_band
 
 
 def detect_vulns(ctx: RunContext, http: CachedHttp | None = None) -> list[Finding]:
     http = http or CachedHttp(ctx.settings.cache_dir, offline=ctx.settings.offline)
     osv = OsvClient(http)
-    targets = [c for c in ctx.components if c.version and c.ecosystem in ("npm", "pypi")]
+    targets = [c for c in ctx.components if c.version and c.ecosystem in ECOSYSTEMS]
     findings: list[Finding] = []
     try:
         hits, source = osv.query_batch([c.purl for c in targets])

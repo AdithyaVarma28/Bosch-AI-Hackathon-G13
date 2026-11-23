@@ -7,7 +7,7 @@ import uuid
 from pathlib import Path
 
 from ..models import Component, DepEdge, Origin
-from ..purl import is_valid_purl, parse_purl
+from ..purl import ECOSYSTEMS, is_valid_purl, make_purl, parse_purl
 from ..store import now_iso
 
 
@@ -84,12 +84,18 @@ def read_cyclonedx(doc: dict, tool: str) -> tuple[list[Component], list[DepEdge]
     comps, by_ref = [], {}
     for c in doc.get("components", []) or []:
         purl = c.get("purl")
-        if not purl or not purl.startswith(("pkg:npm/", "pkg:pypi/")):
+        if not purl:
             continue
         purl = purl.split("?")[0].split("#")[0]
-        eco, name, ver = parse_purl(purl)
-        comp = Component(purl=purl, name=c.get("name") or name, version=c.get("version") or ver,
-                         ecosystem="npm" if eco == "npm" else "pypi", source=tool, seen_by=[tool],
+        try:
+            eco, name, ver = parse_purl(purl)
+        except ValueError:
+            continue
+        if eco not in ECOSYSTEMS:
+            continue  # OS packages (deb/apk/rpm) etc. are reported by the image scan, not mixed into app deps
+        purl = make_purl(eco, name, ver)  # canonical form so tool and lockfile purls match
+        comp = Component(purl=purl, name=name, version=c.get("version") or ver,
+                         ecosystem=eco, source=tool, seen_by=[tool],
                          origin=Origin(license=_license(c)))
         comps.append(comp)
         if c.get("bom-ref"):

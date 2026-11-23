@@ -13,9 +13,20 @@ from ..purl import normalize_pypi
 from . import patterns as P
 from .dist_map import build_dist_map
 from .js_imports import JS_EXT, index_js
+from .polyglot import EXT_LANG, PackageMapper, declared_namespaces, index_polyglot, sdk_services_for
 from .visitors import FileVisitor
 
-INDEX_VERSION = "3"  # bump whenever the visitor output changes (invalidates the sha256 cache)
+INDEX_VERSION = "4"
+
+
+def index_polyglot_extras_js(cf: CodeFile, text: str) -> None:
+    """Routes, env reads and extra sinks for JS/TS (imports come from js_imports)."""
+    imports = list(cf.imports)
+    urls = list(cf.string_urls)
+    index_polyglot(cf, text, "javascript")
+    cf.imports = imports
+    cf.string_urls = urls
+    cf.discovered_by = "regex"  # bump whenever the visitor output changes (invalidates the sha256 cache)
 MAX_FILES = 5000
 STDLIB = set(sys.stdlib_module_names) | {"__future__"}
 
@@ -65,21 +76,26 @@ def build_code_index(ctx: RunContext) -> CodeIndex:
     idx = CodeIndex()
     cache_dir = Path(ctx.settings.cache_dir) / "codeindex"
     cache_dir.mkdir(parents=True, exist_ok=True)
-    py_files, js_files = [], []
+    files: list[tuple[str, str]] = []
     for p in walk_files(root):
         r = rel(root, p)
-        if p.suffix == ".py":
-            py_files.append(r)
-        elif p.suffix in JS_EXT and not r.endswith((".min.js", ".d.ts")) and "/static/" not in f"/{r}":
-            js_files.append(r)
-    if len(py_files) + len(js_files) > MAX_FILES:
+        suf = p.suffix.lower()
+        if suf == ".py":
+            files.append((r, "python"))
+        elif suf in JS_EXT and not r.endswith((".min.js", ".d.ts")) and "/static/" not in f"/{r}":
+            files.append((r, "javascript"))
+        elif suf in EXT_LANG:
+            files.append((r, EXT_LANG[suf]))
+    if len(files) > MAX_FILES:
         idx.errors.append(f"file cap reached ({MAX_FILES}); remaining source files skipped")
-        py_files = py_files[:MAX_FILES]
-        js_files = js_files[: max(0, MAX_FILES - len(py_files))]
+        files = files[:MAX_FILES]
+    py_files = [f for f, l in files if l == "python"]
     idx.source_roots = detect_source_roots(root, py_files)
-    cov = CodeCoverage(files_total=len(py_files) + len(js_files))
+    cov = CodeCoverage(files_total=len(files))
+    for _, l in files:
+        cov.languages[l] = cov.languages.get(l, 0) + 1
 
-    for r, lang in [(f, "python") for f in py_files] + [(f, "javascript") for f in js_files]:
+    for r, lang in files:
         try:
             data = (root / r).read_bytes()
         except OSError as e:
@@ -110,8 +126,13 @@ def build_code_index(ctx: RunContext) -> CodeIndex:
         try:
             if lang == "python":
                 _visit_python(cf, text, module or "", is_pkg)
-            else:
+            elif lang == "javascript":
                 index_js(cf, text)
+                index_polyglot_extras_js(cf, text)
+            else:
+                index_polyglot(cf, text, lang)
+                ns = declared_namespaces(cf, text, lang)
+                cf.module_path = sorted(ns)[0] if ns else None   # package / namespace declared by the file
         except Exception as e:  # fail soft
             cf.parse_error = f"{type(e).__name__}: {e}"
         if cf.parse_error:
@@ -205,8 +226,54 @@ def _resolve(idx: CodeIndex, ctx: RunContext, cov: CodeCoverage) -> None:
                 cf.external_services.append(ExternalService(name=u.detail, via="url", domain=u.detail, line=u.line))
         cov.dynamic_imports += len(cf.dynamic_imports)
     for cf in idx.files:
-        if cf.language == "javascript":
+        if cf.language != "python":
             cov.dynamic_imports += len(cf.dynamic_imports)
+
+
+def link_polyglot_imports(ctx: RunContext) -> None:
+    """Map non-Python imports to packages. Runs AFTER the SBOM stage (needs resolved packages and lockfile
+    namespace hints such as Composer autoload), so the orchestrator calls it from the graph node."""
+    if ctx.code_index:
+        _resolve_polyglot(ctx.code_index, ctx, ctx.code_index.coverage)
+
+
+def _resolve_polyglot(idx: CodeIndex, ctx: RunContext, cov: CodeCoverage) -> None:
+    """Map non-Python imports to packages of the matching ecosystem; mark internal/stdlib."""
+    cov.external_imports_unmapped = 0
+    from ..purl import LANGUAGE_ECOSYSTEM
+    packages: dict[str, set[str]] = {}
+    for c in ctx.components:
+        packages.setdefault(c.ecosystem, set()).add(c.name)
+    for d in (ctx.facts.declared_dependencies if ctx.facts else []):
+        packages.setdefault(d.ecosystem, set()).add(d.name)
+    own: dict[str, set[str]] = {}
+    for cf in idx.files:
+        if cf.language not in ("python", "javascript") and cf.module_path:
+            key = {"kotlin": "java", "scala": "java"}.get(cf.language, cf.language)
+            own.setdefault(key, set()).add(cf.module_path)
+    for m in (ctx.facts.manifests if ctx.facts else []):
+        if m.ecosystem == "golang" and m.project_name:
+            own.setdefault("go", set()).add(m.project_name)
+        if m.ecosystem == "cargo" and m.project_name:
+            own.setdefault("rust", set()).add(m.project_name.replace("-", "_"))
+    mapper = PackageMapper(packages, ctx.import_hints, own)
+    for cf in idx.files:
+        if cf.language == "python":
+            continue
+        if cf.language == "javascript":
+            for imp in cf.imports:
+                if imp.kind == "external" and imp.distribution and imp.distribution not in packages.get("npm", set()):
+                    pass  # npm package names come straight from the specifier; undeclared ones surface as discrepancies
+        else:
+            for imp in cf.imports:
+                if imp.kind == "internal":
+                    continue
+                kind, pkg, status = mapper.map(cf.language, imp.name)
+                imp.kind, imp.distribution = kind, pkg  # type: ignore[assignment]
+                if kind in ("external", "unknown") and status == "unmapped":
+                    cov.external_imports_unmapped += 1
+        sdk_services_for(cf)
+        _ = LANGUAGE_ECOSYSTEM
 
 
 def code_index_json(idx: CodeIndex) -> str:

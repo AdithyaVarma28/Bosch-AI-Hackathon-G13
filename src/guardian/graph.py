@@ -17,7 +17,7 @@ from typing import Any
 import networkx as nx
 
 from .models import CodeIndex, Component, DepEdge, RepoFacts
-from .purl import is_valid_purl, normalize_name, package_key
+from .purl import LANGUAGE_ECOSYSTEM, is_valid_purl, normalize_name, package_key
 
 VERIFIED_SOURCES = {"lockfile", "pip-report", "npm-resolve", "syft", "trivy"}
 
@@ -86,8 +86,9 @@ class UnifiedGraph:
                 ug.edge(P, mod, "CONTAINS", evidence_status="statically-observed", discovered_by=cf.discovered_by)
                 for imp in cf.imports:
                     if imp.kind == "external":
-                        eco = "pypi" if cf.language == "python" else "npm"
-                        dist = imp.distribution or (dist_map.get(imp.name.split(".")[0]) if eco == "pypi" else imp.name)
+                        eco = LANGUAGE_ECOSYSTEM.get(cf.language, "other")
+                        dist = imp.distribution or (dist_map.get(imp.name.split(".")[0]) if eco == "pypi" else
+                                                    imp.name if eco == "npm" else None)
                         if not dist:
                             continue
                         pk = package_key(eco, dist)
@@ -100,15 +101,14 @@ class UnifiedGraph:
                     elif imp.kind == "internal" and imp.resolved_file:
                         ug.edge(mod, f"file:{imp.resolved_file}", "IMPORTS_MODULE", line=imp.line,
                                 evidence_status="statically-observed", discovered_by=cf.discovered_by)
-                if cf.language != "python":
-                    continue
-                for d in cf.definitions:
+                py = cf.language == "python"   # call graph + definitions are Python-only on Day 1
+                for d in (cf.definitions if py else []):
                     if d.type in ("function", "async_function", "method"):
                         fn = ug.node(f"func:{d.id}", type="function", label=d.id.split("::")[1], file=cf.path,
                                      line=d.line, end_line=d.end_line)
                         func_nodes.add(fn)
                         ug.edge(mod, fn, "DEFINES", evidence_status="statically-observed", discovered_by="ast", line=d.line)
-                for c in cf.calls:
+                for c in (cf.calls if py else []):
                     src = ug._fn(c.caller, cf.path)
                     if c.kind == "internal" and c.resolved_target:
                         tgt = f"func:{c.resolved_target}"

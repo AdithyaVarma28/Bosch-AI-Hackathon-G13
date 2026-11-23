@@ -7,6 +7,7 @@ import re
 import httpx
 
 from ..httpcache import CacheMiss, CachedHttp
+from ..purl import OSV_ECOSYSTEM
 
 OSV = "https://api.osv.dev/v1"
 KEV_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
@@ -97,7 +98,7 @@ def severity_band(record: dict) -> tuple[float | None, str | None, str | None]:
 
 def fixed_versions(record: dict, ecosystem: str, name: str) -> list[str]:
     out = []
-    eco = {"npm": "npm", "pypi": "PyPI"}[ecosystem]
+    eco = OSV_ECOSYSTEM.get(ecosystem, ecosystem)
     for aff in record.get("affected") or []:
         pkg = aff.get("package") or {}
         if pkg.get("ecosystem") != eco or pkg.get("name", "").lower().replace("_", "-") != name.lower().replace("_", "-"):

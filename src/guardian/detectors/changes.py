@@ -11,7 +11,9 @@ from ..models import Finding
 from ..sbom.lockfiles import is_lockfile, lock_index, parse_lockfile
 
 TRUSTED_HOSTS = {"registry.npmjs.org", "registry.yarnpkg.com", "files.pythonhosted.org", "pypi.org",
-                 "codeload.github.com"}
+                 "codeload.github.com", "api.github.com", "repo.maven.apache.org", "repo1.maven.org", "proxy.golang.org",
+                 "static.crates.io", "crates.io", "index.crates.io", "rubygems.org", "index.rubygems.org",
+                 "repo.packagist.org", "packagist.org", "api.nuget.org", "plugins.gradle.org"}
 
 
 def _major(v: str | None) -> int | None:
@@ -40,12 +42,20 @@ def detect_changes(ctx: RunContext, last_n: int = 20) -> list[Finding]:
             continue  # nothing to diff against: never an anomaly
         short = h.commit[:7]
         # new dependency / large jump (manifest + lock level)
-        for name in h.added:
-            ev = store.add_evidence("raw", "git", f"commit:{h.commit}", f"{short} {h.date} {h.author}: {h.message}\nadded: {name}")
-            out.append(Finding(cls="anomaly", subject=name, title=f"New dependency '{name}' added in {short}",
-                               locator=f"commit:{h.commit}", detector="changes", classification="W",
-                               raw_evidence_ids=[ev.id], signals={"signal": "new_dependency", "commit": h.commit,
-                                                                 "author": h.author, "date": h.date, "message": h.message}))
+        if 0 < len(h.added) <= 3:
+            for name in h.added:
+                ev = store.add_evidence("raw", "git", f"commit:{h.commit}", f"{short} {h.date} {h.author}: {h.message}\nadded: {name}")
+                out.append(Finding(cls="anomaly", subject=name, title=f"New dependency '{name}' added in {short}",
+                                   locator=f"commit:{h.commit}", detector="changes", classification="W",
+                                   raw_evidence_ids=[ev.id], signals={"signal": "new_dependency", "commit": h.commit,
+                                                                     "author": h.author, "date": h.date, "message": h.message}))
+        elif h.added:  # bulk change (initial dependency set, framework upgrade): one finding per commit, not N
+            ev = store.add_evidence("raw", "git", f"commit:{h.commit}",
+                                    f"{short} {h.date} {h.author}: {h.message}\nadded ({len(h.added)}): {', '.join(h.added)}")
+            out.append(Finding(cls="anomaly", subject=f"commit:{h.commit}", title=f"{len(h.added)} new dependencies added in {short}",
+                               locator=f"commit:{h.commit}", detector="changes", classification="W", raw_evidence_ids=[ev.id],
+                               signals={"signal": "new_dependency", "commit": h.commit, "added": h.added, "author": h.author,
+                                        "date": h.date, "message": h.message}))
         for ch in h.changed:
             a, b = _major(ch.from_version), _major(ch.to_version)
             if a is not None and b is not None and b - a >= 1:

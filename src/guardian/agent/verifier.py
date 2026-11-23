@@ -46,6 +46,32 @@ def verify_claims(claims: list[Claim], store: RunStore) -> list[Claim]:
     return out
 
 
+DISMISSAL = re.compile(r"\b(false positives?|ignore (the )?(scanner|findings?|warnings?|previous)|(is|are|everything( here)? is) "
+                       r"(completely |totally )?safe|no (security )?risk|nothing to worry|not (a )?(real )?(risk|issue|vulnerab\w*)|"
+                       r"approved by|mark(ed)? (as )?(safe|benign)|can be ignored)\b", re.I)
+
+
+def guard_llm_claims(claims: list[Claim]) -> list[Claim]:
+    """Extra rules for model-written claims (found by chaos testing with a lying / prompt-injected model):
+    5. an LLM claim with no evidence at all is REJECTED (the rule engine, not the model, states unknowns)
+    6. an LLM claim that dismisses or overrides findings ('false positive', 'safe', 'ignore the scanner') is
+       REJECTED: Day 1 explanations describe signals, they never clear them."""
+    out = []
+    for c in claims:
+        c = c.model_copy()
+        if c.verifier_status != "rejected" and not c.evidence_ids:
+            c.verifier_status, c.reason = "rejected", "model claim without evidence"
+        elif c.verifier_status != "rejected" and DISMISSAL.search(c.text):
+            c.verifier_status, c.reason = "rejected", "model text dismisses findings (not allowed)"
+        out.append(c)
+    return out
+
+
+def safe_text(text: str) -> bool:
+    """Free model text (summaries) may be shown only if it does not dismiss findings."""
+    return bool(text) and not DISMISSAL.search(text)
+
+
 def safe_claim(text: str, type_: str, evidence_ids: list[str], confidence: str = "medium") -> Claim | None:
     """Build a Claim from untrusted LLM output; returns None if it cannot be a valid claim."""
     if type_ not in ("fact", "inference", "unknown"):

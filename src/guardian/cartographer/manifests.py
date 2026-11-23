@@ -23,8 +23,9 @@ MANIFEST_NAMES = {"package.json", "pyproject.toml", "setup.cfg", "setup.py", "Pi
 
 
 def is_manifest(name: str) -> bool:
+    from .manifests_poly import is_poly_manifest
     return name in MANIFEST_NAMES or bool(re.match(r"^requirements.*\.(txt|in)$", name, re.I)) \
-        or (name.endswith(".txt") and "requirements" in name.lower())
+        or (name.endswith(".txt") and "requirements" in name.lower()) or is_poly_manifest(name)
 
 
 @dataclass
@@ -35,11 +36,16 @@ class ManifestParse:
     scripts: list[LifecycleScript] = field(default_factory=list)
     includes: list[tuple[str, str]] = field(default_factory=list)  # (kind "-r"/"-c", rel path)
     errors: list[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
+    namespaces: dict[str, str] = field(default_factory=dict)       # import/namespace prefix -> package (e.g. PSR-4)
 
 
 def parse_manifest(rel_path: str, text: str) -> ManifestParse:
+    from .manifests_poly import is_poly_manifest, parse_poly_manifest
     name = PurePosixPath(rel_path).name
     try:
+        if is_poly_manifest(name):
+            return parse_poly_manifest(rel_path, text)
         if name == "package.json":
             return parse_package_json(rel_path, text)
         if name == "pyproject.toml":

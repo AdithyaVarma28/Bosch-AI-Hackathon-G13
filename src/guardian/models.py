@@ -6,12 +6,12 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-Ecosystem = Literal["npm", "pypi", "other"]
+Ecosystem = Literal["npm", "pypi", "maven", "golang", "cargo", "gem", "composer", "nuget", "other"]
 Scope = Literal["prod", "dev", "optional", "build", "test", "unknown"]
 NodeStatus = Literal["ok", "degraded", "skipped", "failed"]
 DiscoveredBy = Literal[
     "manifest", "lockfile", "pip-report", "npm-resolve", "syft", "trivy", "pypi", "npm-registry",
-    "git", "ast", "regex", "yaml", "dockerfile", "osv", "rule", "ai",
+    "git", "ast", "regex", "yaml", "dockerfile", "osv", "rule", "ai", "mvn-resolve", "registry",
 ]
 
 
@@ -356,7 +356,7 @@ class SensitiveCall(BaseModel):
 
 class CodeFile(BaseModel):
     path: str
-    language: Literal["python", "javascript"]
+    language: str  # python | javascript | typescript | java | kotlin | go | rust | ruby | php | csharp ...
     module_path: str | None = None
     package_dir: str | None = None
     sha256: str
@@ -389,6 +389,9 @@ class CodeCoverage(BaseModel):
     internal_calls_resolved: int = 0
     internal_calls_unresolved: int = 0
     dynamic_imports: int = 0
+    external_imports_unmapped: int = 0     # imports we could not tie to a declared/resolved package
+    languages: dict[str, int] = Field(default_factory=dict)
+    call_graph_languages: list[str] = Field(default_factory=lambda: ["python"])
 
 
 class CodeIndex(BaseModel):

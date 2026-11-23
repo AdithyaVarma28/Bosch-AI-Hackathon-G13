@@ -14,7 +14,7 @@ from ..context import RunContext
 from ..llm import LLMUnavailable, fence
 from ..models import Claim, Explanation, Finding
 from .tools import EvidenceTools, PathEscape, ToolRefused
-from .verifier import safe_claim, verify_claims
+from .verifier import guard_llm_claims, safe_claim, safe_text, verify_claims
 
 
 @dataclass
@@ -148,7 +148,7 @@ def investigate(f: Finding, ctx: RunContext, tools: EvidenceTools | None = None,
             summary = str(msg.get("summary", ""))[:600]
             raw = [safe_claim(c.get("text", ""), c.get("type", "inference"), c.get("evidence_ids", []), c.get("confidence", "medium"))
                    for c in msg.get("claims", []) if isinstance(c, dict)]
-            checked = verify_claims([c for c in raw if c], ctx.store)
+            checked = guard_llm_claims(verify_claims([c for c in raw if c], ctx.store))
             rejected = [c for c in checked if c.verifier_status == "rejected"]
             final = [c for c in checked if c.verifier_status != "rejected"]
             if rejected and repairs < budget.max_repair_passes:
@@ -165,6 +165,9 @@ def investigate(f: Finding, ctx: RunContext, tools: EvidenceTools | None = None,
         exp.notes = "; ".join(notes + ["agent produced no verified claims; rule-based explanation used"])
         exp.tool_calls = calls
         return exp
+    if summary and not safe_text(summary):
+        notes.append("model summary discarded (dismissed findings)")
+        summary = ""
     if summary:  # the summary is checked like any other claim
         s = verify_claims([Claim(text=summary, type="inference", evidence_ids=list(dict.fromkeys(
             e for cl in final for e in cl.evidence_ids))[:4], confidence="medium")], ctx.store)[0]

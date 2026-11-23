@@ -119,7 +119,7 @@ def s_cartographer(ctx: RunContext, state) -> dict:
     f = ctx.facts
     return {"_message": f"{len(f.declared_dependencies)} declared deps, {len(f.manifests)} manifests, "
                         f"{len(f.dockerfiles)} Dockerfiles, {len(f.ci_workflows)} workflows, {len(f.dependency_history)} history commits",
-            "_status": "degraded" if f.errors else "ok"}
+            "_status": "degraded" if any(not e.startswith("note:") for e in f.errors) else "ok"}
 
 
 def s_sbom(ctx: RunContext, state) -> dict:
@@ -141,6 +141,9 @@ def s_code(ctx: RunContext, state) -> dict:
 
 
 def s_graph(ctx: RunContext, state) -> dict:
+    from .codeindex.parser import link_polyglot_imports
+    link_polyglot_imports(ctx)                       # needs SBOM results, so it runs after the parallel join
+    ctx.store.save_artifact("code_index.json", ctx.code_index)
     ctx.graph = UnifiedGraph.build(ctx.repo.name, ctx.facts, ctx.components, ctx.edges, ctx.code_index)
     ctx.store.save_artifact("graph.json", ctx.graph.to_json())
     ctx.store.save_artifact("execution_paths.json", ctx.graph.execution_paths())

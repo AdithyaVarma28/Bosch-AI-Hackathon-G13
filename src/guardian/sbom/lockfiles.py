@@ -27,17 +27,22 @@ class ParsedLock:
     edges: list[DepEdge] = field(default_factory=list)
     direct_names: set[str] = field(default_factory=set)   # names the lock itself marks as direct
     errors: list[str] = field(default_factory=list)
+    namespaces: dict[str, str] = field(default_factory=dict)  # import/namespace prefix -> package (composer autoload)
     version: int | None = None
     has_integrity: bool = False
 
 
 def is_lockfile(name: str) -> bool:
-    return name in LOCKFILE_NAMES
+    from .lockfiles_poly import POLY_LOCKS
+    return name in LOCKFILE_NAMES or name in POLY_LOCKS
 
 
 def parse_lockfile(rel_path: str, text: str) -> ParsedLock:
+    from .lockfiles_poly import POLY_LOCKS, parse_poly_lock
     name = PurePosixPath(rel_path).name
     try:
+        if name in POLY_LOCKS:
+            return parse_poly_lock(rel_path, text)
         if name in ("package-lock.json", "npm-shrinkwrap.json"):
             return parse_package_lock(rel_path, text)
         if name == "yarn.lock":
@@ -52,7 +57,8 @@ def parse_lockfile(rel_path: str, text: str) -> ParsedLock:
             return parse_requirements_pins(rel_path, text)
         return ParsedLock(rel_path, "other", errors=[f"{rel_path}: unsupported lockfile format"])
     except Exception as e:
-        eco = "npm" if name.endswith((".json", "yarn.lock")) else "pypi"
+        eco = {"Cargo.lock": "cargo", "Gemfile.lock": "gem", "composer.lock": "composer", "packages.lock.json": "nuget",
+               "gradle.lockfile": "maven", "go.sum": "golang"}.get(name, "npm" if name.endswith((".json", "yarn.lock")) else "pypi")
         return ParsedLock(rel_path, eco, errors=[f"{rel_path}: parse_error: {type(e).__name__}: {e}"])
 
 

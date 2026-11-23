@@ -33,6 +33,24 @@ class CachedHttp:
         h = hashlib.sha256(f"{method}|{url}|{json.dumps(body, sort_keys=True) if body is not None else ''}".encode()).hexdigest()
         return self.dir / f"{h}.json"
 
+    def get_text(self, url: str) -> tuple[str | None, str]:
+        """Cached GET returning text (e.g. POM XML). 404 -> (None, src)."""
+        path = self._key("GETTEXT", url, None)
+        if path.exists():
+            self.stats["cache"] += 1
+            return json.loads(path.read_text(encoding="utf-8")).get("text"), "cache"
+        if self.offline:
+            self.stats["miss"] += 1
+            raise CacheMiss(url)
+        r = self.client.get(url)
+        if r.status_code == 404:
+            path.write_text(json.dumps({"text": None}), encoding="utf-8")
+            return None, "live"
+        r.raise_for_status()
+        path.write_text(json.dumps({"text": r.text}), encoding="utf-8")
+        self.stats["live"] += 1
+        return r.text, "live"
+
     def request_json(self, method: str, url: str, body: Any = None) -> tuple[Any, str]:
         """Returns (json, 'live'|'cache'). Raises CacheMiss offline, httpx errors online. 404 -> (None, src)."""
         path = self._key(method, url, body)

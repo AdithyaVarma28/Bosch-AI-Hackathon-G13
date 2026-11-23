@@ -11,7 +11,8 @@ from ..models import Component, DepEdge, Origin, SbomReport
 from ..purl import make_purl, normalize_name
 from ..runner import ToolFailed
 from .cyclonedx import validate_cyclonedx, write_cyclonedx
-from .lockfiles import ParsedLock, parse_lockfile
+from .lockfiles import ParsedLock
+from .lockfiles_poly import parse_lock_in_repo
 from .registry import fetch_metadata
 from .resolve import resolve_without_lockfile
 from .tools import run_syft, run_trivy_fs
@@ -33,6 +34,35 @@ def _merge(into: dict[str, Component], comps: list[Component]) -> None:
             prev.origin.has_install_script = prev.origin.has_install_script or c.origin.has_install_script
         else:
             into[c.purl] = c
+
+
+DEFAULT_REGISTRY = {"pypi": "pypi.org", "npm": "registry.npmjs.org", "maven": "repo.maven.apache.org",
+                    "golang": "proxy.golang.org", "cargo": "crates.io", "gem": "rubygems.org", "composer": "packagist.org",
+                    "nuget": "api.nuget.org"}
+
+
+def _exact_version(ecosystem: str, spec: str | None) -> str | None:
+    """A declared spec counts as an exact version only when it pins one (unknown stays unknown)."""
+    s = (spec or "").strip()
+    if not s:
+        return None
+    if ecosystem == "pypi":
+        m = re.match(r"^===?\s*([^\s,;]+)$", s)
+        return m.group(1) if m else None
+    if ecosystem == "npm":
+        return s if re.fullmatch(r"\d+\.\d+\.\d+(-[\w.]+)?", s) else None
+    if ecosystem == "maven":
+        return s if re.fullmatch(r"[\w.\-]+", s) and not s.startswith(("[", "(")) and "SNAPSHOT" not in s and "${" not in s else None
+    if ecosystem == "nuget":
+        return s.strip("[]") if re.fullmatch(r"\[?\d+(\.\d+){1,3}(-[\w.]+)?\]?", s) else None
+    if ecosystem == "cargo":
+        m = re.fullmatch(r"=\s*(\d+\.\d+\.\d+\S*)", s)
+        return m.group(1) if m else None
+    if ecosystem in ("gem", "composer"):
+        return s if re.fullmatch(r"v?\d+\.\d+(\.\d+)*", s) else None
+    if ecosystem == "golang":
+        return s.split()[0] if s.startswith("v") else None
+    return None
 
 
 def _jaccard(a: set[str], b: set[str]) -> float | None:
@@ -69,7 +99,9 @@ def run_sbom_stage(ctx: RunContext) -> None:
             if h.lockfile in parsed_locks:  # workspace lockfile shared by several manifests
                 continue
             parsed_locks.add(h.lockfile)
-            parsed = parse_lockfile(h.lockfile, read_text(root / h.lockfile) or "")
+            parsed = parse_lock_in_repo(root, h.manifest, h.lockfile)
+            if parsed.namespaces:
+                ctx.import_hints.setdefault(parsed.ecosystem, {}).update(parsed.namespaces)
             if parsed.components:
                 take(parsed, "lockfile")
                 resolutions.append("committed" if h.committed else "resolved_not_committed")
@@ -95,19 +127,43 @@ def run_sbom_stage(ctx: RunContext) -> None:
             for d in facts.declared_dependencies:
                 if d.source_file != h.manifest:
                     continue
-                exact = re.match(r"^==\s*([^\s,;]+)$", d.spec or "")
-                version = exact.group(1) if exact else None
+                version = _exact_version(d.ecosystem, d.spec)
                 c = Component(purl=make_purl(d.ecosystem, d.name, version), name=d.name, version=version,
                               ecosystem=d.ecosystem, scope=d.scope, direct=True, source="manifest", seen_by=["manifest"],
                               origin=Origin(resolved_url=d.spec if d.kind in ("vcs", "url", "path") else None,
-                                            registry="pypi.org" if d.ecosystem == "pypi" and d.kind == "registry" else
-                                            "registry.npmjs.org" if d.kind == "registry" else None),
+                                            registry=DEFAULT_REGISTRY.get(d.ecosystem) if d.kind == "registry" else None),
                               evidence_ids=[d.evidence_id] if d.evidence_id else [])
                 _merge(comps, [c])
+
+    # 2b. Maven: versions managed by parent POMs / imported BOMs (no Docker needed; POM XML only)
+    unversioned = [c for c in comps.values() if c.ecosystem == "maven" and not c.version]
+    if unversioned:
+        from .maven_bom import resolve_pom_versions
+        managed: dict[str, str] = {}
+        for m in facts.manifests:
+            if m.path.endswith("pom.xml"):
+                got, errs = resolve_pom_versions(read_text(root / m.path) or "", CachedHttp(ctx.settings.cache_dir, offline=ctx.settings.offline))
+                managed.update(got)
+                report.notes.extend(f"maven BOM: {e}" for e in errs[:5])
+        fixed = 0
+        for c in unversioned:
+            v = managed.get(c.name)
+            if v:
+                del comps[c.purl]
+                c.version, c.purl = v, make_purl("maven", c.name, v)
+                c.source, c.seen_by = "manifest", sorted(set(c.seen_by) | {"maven-bom"})
+                c.evidence_ids.append(store.add_evidence("raw", "maven-bom", c.name, f"{c.name} version {v} managed by parent POM/BOM").id)
+                _merge(comps, [c])
+                fixed += 1
+        if fixed:
+            report.notes.append(f"maven: {fixed}/{len(unversioned)} direct dependency versions taken from parent POM / imported BOMs "
+                                "(transitive dependencies still need sandboxed `mvn dependency:tree`)")
 
     # 3. direct + scope from declarations
     declared = {}
     for d in facts.declared_dependencies:
+        if d.markers == "indirect":  # Go `// indirect` requirements are transitive by definition
+            continue
         key = (d.ecosystem, normalize_name(d.ecosystem, d.name))
         if key not in declared or d.scope == "prod":
             declared[key] = d.scope

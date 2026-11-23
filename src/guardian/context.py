@@ -32,6 +32,8 @@ class RunContext:
     edges: list[DepEdge] = field(default_factory=list)
     sbom_report: SbomReport | None = None
     metadata: dict[str, PackageMetadata] = field(default_factory=dict)
+    # ecosystem -> {import/namespace prefix -> package name}, e.g. composer autoload "Monolog\\" -> "monolog/monolog"
+    import_hints: dict[str, dict[str, str]] = field(default_factory=dict)
     code_index: CodeIndex | None = None
     graph: Any = None              # guardian.graph.UnifiedGraph
     dossier: Dossier | None = None

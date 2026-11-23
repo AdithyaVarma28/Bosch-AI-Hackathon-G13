@@ -8,7 +8,8 @@ import yaml
 from ..fsutil import find_line
 from ..models import ComposeService, DockerfileFacts, DockerInstr, DockerStage
 
-INSTALL_RE = re.compile(r"\b(pip3?|python3? -m pip|npm|yarn|pnpm|apt-get|apk|gem|go|cargo)\s+(install|add|i|ci)\b")
+INSTALL_RE = re.compile(r"\b(pip3?|python3? -m pip|npm|yarn|pnpm|apt-get|apk|gem|go|cargo|bundle|composer|dotnet)\s+"
+                        r"(install|add|i|ci|get|restore|require)\b|\b(mvn|gradle|\./gradlew|\./mvnw)\b")
 FETCH_RE = re.compile(r"\b(curl|wget)\b[^|;&]*https?://")
 
 

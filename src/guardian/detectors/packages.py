@@ -109,7 +109,7 @@ def detect_registry_signals(ctx: RunContext) -> list[Finding]:
             continue
         ev = None
         if md.yanked:
-            ev = ctx.store.add_evidence("raw", "pypi", c.purl, f"{c.purl} is yanked on PyPI")
+            ev = ctx.store.add_evidence("raw", "registry", c.purl, f"{c.purl} is marked yanked in its registry")
             out.append(Finding(cls="anomaly", subject=c.purl, title=f"{c.name}@{c.version} is a yanked release",
                                locator=f"registry:{c.purl}", detector="registry", classification="W", raw_evidence_ids=[ev.id],
                                signals={"signal": "yanked", "scope": c.scope}))
@@ -136,15 +136,28 @@ def detect_registry_signals(ctx: RunContext) -> list[Finding]:
             out.append(Finding(cls="anomaly", subject=c.purl, title=f"Lockfile hash for {c.name}@{c.version} does not match PyPI",
                                locator=f"registry:{c.purl}", detector="registry", classification="S", raw_evidence_ids=[ev.id],
                                signals={"signal": "hash_mismatch", "scope": c.scope}))
-    for ix in (ctx.facts.package_indexes if ctx.facts else []):
-        if ix.type in ("extra-index-url", "uv-extra-index-url") or "scope-registry" in ix.type or (
-                ix.type in ("index-url", "npm-registry") and not any(h in ix.url for h in ("pypi.org", "registry.npmjs.org"))):
-            out.append(Finding(cls="anomaly", subject=ix.url, title=f"Additional package index configured: {ix.url}",
-                               locator=f"{ix.source_file}:{ix.line or 1}", detector="registry",
-                               classification="S" if ix.type in ("extra-index-url", "uv-extra-index-url") else "W",
-                               raw_evidence_ids=[ix.evidence_id] if ix.evidence_id else [],
-                               signals={"signal": "extra_index", "type": ix.type, "url": ix.url}))
+    indexes = ctx.facts.package_indexes if ctx.facts else []
+    for ix in indexes:
+        official = any(h in ix.url for h in OFFICIAL_INDEX_HOSTS)
+        if official and "extra" not in ix.type:
+            continue
+        # Dependency confusion: a private source *alongside* the public one (pip extra-index, several Bundler
+        # sources, Maven/Composer/NuGet repositories added next to the defaults) lets a public name win.
+        same_file = [x for x in indexes if x.source_file == ix.source_file]
+        mixed = ix.type in ("extra-index-url", "uv-extra-index-url") or (
+            ix.type in ("gem-source", "nuget-source") and any(any(h in x.url for h in OFFICIAL_INDEX_HOSTS) for x in same_file)) or \
+            ix.type in ("maven-repository",) or ix.type.startswith("composer-")
+        out.append(Finding(cls="anomaly", subject=ix.url, title=f"Additional package index configured: {ix.url}",
+                           locator=f"{ix.source_file}:{ix.line or 1}", detector="registry",
+                           classification="S" if mixed and ix.type in ("extra-index-url", "uv-extra-index-url", "gem-source", "nuget-source") else "W",
+                           raw_evidence_ids=[ix.evidence_id] if ix.evidence_id else [],
+                           signals={"signal": "extra_index", "type": ix.type, "url": ix.url, "alongside_public_index": mixed}))
     return out
+
+
+OFFICIAL_INDEX_HOSTS = ("pypi.org", "pythonhosted.org", "registry.npmjs.org", "registry.yarnpkg.com", "repo.maven.apache.org",
+                        "repo1.maven.org", "rubygems.org", "packagist.org", "api.nuget.org", "crates.io", "plugins.gradle.org",
+                        "proxy.golang.org")
 
 
 def detect_discrepancies(ctx: RunContext) -> list[Finding]:
@@ -152,11 +165,18 @@ def detect_discrepancies(ctx: RunContext) -> list[Finding]:
     if not ctx.graph or not ctx.code_index:
         return []
     out = []
-    langs = {cf.language for cf in ctx.code_index.files}
+    from ..purl import LANGUAGE_ECOSYSTEM
+    indexed_ecos = {LANGUAGE_ECOSYSTEM.get(cf.language) for cf in ctx.code_index.files}
     for row in ctx.graph.discrepancies():
         eco = row["ecosystem"]
-        if (eco == "pypi" and "python" not in langs) or (eco == "npm" and "javascript" not in langs):
+        # Only compare layers where import -> package mapping is reliable. Maven (Java packages != coordinates),
+        # NuGet and Composer starter/meta packages are skipped to avoid false "never imported" claims.
+        if eco not in indexed_ecos or eco in ("maven", "nuget", "composer"):
             continue
+        if eco == "golang" and row["status"] == "declared-not-imported":
+            decl = [d for d in ctx.facts.declared_dependencies if d.ecosystem == "golang" and d.name == row["name"]]
+            if decl and all(d.markers == "indirect" for d in decl):
+                continue
         if row["status"] == "declared-not-imported" and "prod" in row["declared_scopes"]:
             ev = ctx.store.add_evidence("derived", "graph", row["package"],
                                         f"{row['name']} is declared as a runtime dependency but no source file imports it")

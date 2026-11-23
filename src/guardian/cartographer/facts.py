@@ -17,11 +17,13 @@ from .history import dependency_history
 from .manifests import is_manifest, parse_manifest, parse_npmrc
 
 MANIFEST_CAP = 200
-LANG_EXT = {".py": "Python", ".js": "JavaScript", ".mjs": "JavaScript", ".cjs": "JavaScript", ".ts": "TypeScript",
+LANG_EXT = {".py": "Python", ".js": "JavaScript", ".mjs": "JavaScript", ".cjs": "JavaScript", ".ts": "TypeScript", ".kt": "Kotlin", ".kts": "Kotlin", ".scala": "Scala", ".fs": "F#", ".vb": "VB.NET", ".swift": "Swift", ".c": "C", ".cpp": "C++", ".h": "C/C++",
             ".tsx": "TypeScript", ".jsx": "JavaScript", ".java": "Java", ".go": "Go", ".rb": "Ruby", ".rs": "Rust",
             ".php": "PHP", ".cs": "C#", ".html": "HTML", ".css": "CSS", ".sh": "Shell", ".yml": "YAML", ".yaml": "YAML"}
 NPM_LOCKS = ("package-lock.json", "npm-shrinkwrap.json", "yarn.lock", "pnpm-lock.yaml", "bun.lock", "bun.lockb")
 PY_LOCKS = ("poetry.lock", "uv.lock", "Pipfile.lock", "pdm.lock")
+LOCKS = {"npm": NPM_LOCKS, "pypi": PY_LOCKS, "maven": ("gradle.lockfile",), "golang": ("go.sum",), "cargo": ("Cargo.lock",),
+         "gem": ("Gemfile.lock",), "composer": ("composer.lock",), "nuget": ("packages.lock.json",)}
 CONFIG_RE = re.compile(r"(^|/)(settings\.py|alembic\.ini|config/[^/]+\.(ya?ml|toml|ini|json)|conf/[^/]+\.(ya?ml|toml|ini|json)|"
                        r"app\.config\.(js|json)|config\.(ya?ml|toml|ini|json|js))$")
 
@@ -63,6 +65,20 @@ def build_repo_facts(ctx: RunContext) -> RepoFacts:
                     manifest_paths.append(r)
             elif is_lockfile(name):
                 lockfile_paths.append(r)
+            elif name.lower() == "nuget.config":
+                from .manifests_poly import parse_nuget_config
+                facts.package_indexes.extend(parse_nuget_config(r, read_text(p) or ""))
+            elif r.endswith(".cargo/config.toml") or r.endswith(".cargo/config"):
+                import tomllib
+                cfg = tomllib.loads(read_text(p) or "")
+                from ..models import PackageIndex
+                for nm, reg in (cfg.get("registries") or {}).items():
+                    if isinstance(reg, dict) and reg.get("index"):
+                        facts.package_indexes.append(PackageIndex(url=reg["index"], type=f"cargo-registry({nm})", source_file=r))
+                for nm, src in (cfg.get("source") or {}).items():
+                    if isinstance(src, dict) and (src.get("registry") or src.get("replace-with")):
+                        facts.package_indexes.append(PackageIndex(url=str(src.get("registry") or src.get("replace-with")),
+                                                                  type=f"cargo-source-replacement({nm})", source_file=r))
             elif name == ".npmrc":
                 t = read_text(p) or ""
                 idx, ign = parse_npmrc(r, t)
@@ -112,6 +128,9 @@ def build_repo_facts(ctx: RunContext) -> RepoFacts:
             continue
         mp = parse_manifest(r, text)
         facts.errors.extend(mp.errors)
+        facts.errors.extend(f"note: {r}: {n}" for n in mp.notes)
+        if mp.namespaces and mp.manifest:
+            ctx.import_hints.setdefault(mp.manifest.ecosystem + ":own", {}).update(mp.namespaces)
         for kind, inc in mp.includes:
             if kind == "-r" and inc not in seen:
                 queue.append(inc)
@@ -159,7 +178,7 @@ def _lockfile_health(ctx, facts: RepoFacts, lockfile_paths, npmrc, tracked, text
         if (d, m.ecosystem) in done_dirs and not PurePosixPath(m.path).name.startswith("requirements"):
             continue
         done_dirs.add((d, m.ecosystem))
-        names = NPM_LOCKS if m.ecosystem == "npm" else PY_LOCKS
+        names = LOCKS.get(m.ecosystem, ())
         lock = None
         cur = PurePosixPath(d)
         while lock is None:  # same directory first, then workspace roots above it
@@ -176,9 +195,12 @@ def _lockfile_health(ctx, facts: RepoFacts, lockfile_paths, npmrc, tracked, text
             deps = [x for x in facts.declared_dependencies if x.source_file == m.path and x.kind == "registry"]
             if deps and all((x.spec or "").startswith("==") for x in deps):
                 lock = m.path
+        if lock is None and m.ecosystem == "golang":
+            lock = m.path  # go.mod lists the full build list (Go >= 1.17) even without go.sum
         if lock:
             text = read_text(root / lock) or ""
-            parsed = parse_lockfile(lock, text)
+            from ..sbom.lockfiles_poly import parse_lock_in_repo
+            parsed = parse_lock_in_repo(root, m.path, lock)
             h.lockfile, h.present = lock, True
             h.committed = tracked is None or lock in tracked
             h.version, h.has_integrity = parsed.version, parsed.has_integrity

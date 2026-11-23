@@ -52,6 +52,35 @@ def scan(target: str = typer.Argument(..., help="https://github.com/<owner>/<rep
 
 
 @app.command()
+def chaos(target: str = typer.Argument(..., help="local repository path (experiments run on a throwaway copy)"),
+          out: Path = typer.Option(Path("output/chaos"), help="output directory"),
+          only: str = typer.Option(None, help="comma-separated experiment ids (default: all)"),
+          monkey: int = typer.Option(0, help="extra random multi-fault experiments (chaos monkey)"),
+          seed: int = typer.Option(None, help="seed for the chaos monkey (reproducible)"),
+          online: bool = typer.Option(False, help="allow network (default: offline, cache only)"),
+          list_: bool = typer.Option(False, "--list", help="list experiments and exit")):
+    """Chaos engineering: inject faults into Guardian's pipeline and verify it degrades safely."""
+    from .chaos import EXPERIMENTS, run_chaos
+    if list_:
+        for e in EXPERIMENTS:
+            console.print(f"  [bold]{e.id:<22}[/] {e.category:<18} {e.name}")
+        return
+
+    def emit(r: dict) -> None:
+        mark = "[green]PASS[/]" if r["passed"] else "[red]FAIL[/]"
+        console.print(f"  {mark} {r['id']:<22} {r['seconds']:>5}s  {r['name']}")
+        for p in r["probes"]:
+            if not p["ok"]:
+                console.print(f"        [red]✘ {p['probe']}[/] {p['detail']}")
+
+    console.print(f"[bold]Guardian chaos[/] on a copy of {target}")
+    s = run_chaos(target, out, [x.strip() for x in only.split(",")] if only else None, monkey, seed, offline=not online, emit=emit)
+    console.print(f"\nResilience score: [bold]{s['resilience_score']}%[/] ({s['passed']}/{s['experiments']})\nScorecard: {s['path']}")
+    if s["passed"] != s["experiments"]:
+        raise typer.Exit(1)
+
+
+@app.command()
 def fixture(dest: Path = typer.Argument(Path("output/fixtures"))):
     """Build the guardian-fixture demo repository (5 commits, planted signals)."""
     from .fixture import make_fixture

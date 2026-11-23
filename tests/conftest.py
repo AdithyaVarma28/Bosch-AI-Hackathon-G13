@@ -35,7 +35,7 @@ def make_ctx(tmp_path):
 def fixture_ctx(fixture_repo, tmp_path_factory):
     """Fully built context (facts, SBOM, code index, graph) for the fixture, offline, no Docker, no LLM."""
     from guardian.cartographer.facts import build_repo_facts
-    from guardian.codeindex.parser import build_code_index
+    from guardian.codeindex.parser import build_code_index, link_polyglot_imports
     from guardian.graph import UnifiedGraph
     from guardian.sbom.stage import run_sbom_stage
     d = tmp_path_factory.mktemp("ctx")
@@ -44,5 +44,26 @@ def fixture_ctx(fixture_repo, tmp_path_factory):
     ctx.facts = build_repo_facts(ctx)
     run_sbom_stage(ctx)
     ctx.code_index = build_code_index(ctx)
+    link_polyglot_imports(ctx)
+    ctx.graph = UnifiedGraph.build(ctx.repo.name, ctx.facts, ctx.components, ctx.edges, ctx.code_index)
+    return ctx
+
+
+@pytest.fixture(scope="session")
+def polyglot_ctx(tmp_path_factory):
+    """Context for the polyglot fixture (Maven, Gradle, Go, Cargo, Bundler, Composer, NuGet), offline."""
+    from guardian.cartographer.facts import build_repo_facts
+    from guardian.codeindex.parser import build_code_index, link_polyglot_imports
+    from guardian.fixture_polyglot import make_polyglot_fixture
+    from guardian.graph import UnifiedGraph
+    from guardian.sbom.stage import run_sbom_stage
+    d = tmp_path_factory.mktemp("poly")
+    repo = make_polyglot_fixture(d)
+    ctx = RunContext(repo=open_local(repo), store=RunStore(d / "run", "poly"),
+                     settings=Settings(offline=True, use_llm=False, use_docker=False, cache_dir=d / "cache"))
+    ctx.facts = build_repo_facts(ctx)
+    run_sbom_stage(ctx)
+    ctx.code_index = build_code_index(ctx)
+    link_polyglot_imports(ctx)
     ctx.graph = UnifiedGraph.build(ctx.repo.name, ctx.facts, ctx.components, ctx.edges, ctx.code_index)
     return ctx
