@@ -176,3 +176,19 @@ def test_missing_static_file_is_404_but_client_routes_still_work(tmp_path):
     assert c.get("/missing.js").status_code == 404
     assert "app" in c.get("/runsx").text          # only /runs and /runs/... belong to the API
     assert "app" in c.get("/vulnerabilities").text
+
+
+# --- run ids are validated, never used as a glob pattern ---------------------
+def test_wildcard_run_ids_are_rejected_not_matched(tmp_path):
+    _disk_run(tmp_path, "mini-shop", "20261123-100000-a", "2026-11-23T10:00:00Z")
+    client = TestClient(create_app(tmp_path))
+    for bad in ["*", "**", "20261123*", "[0-9]*", "2026112?-100000-a", "a%2F..", "%2e%2e"]:
+        for tail in ["", "/report", "/viz", "/sbom", "/facts", "/graph", "/code-index", "/evidence/x"]:
+            assert client.get(f"/runs/{bad}{tail}").status_code == 404, (bad, tail)
+
+
+def test_a_real_run_id_still_works(tmp_path):
+    _disk_run(tmp_path, "mini-shop", "20261123-100000-a", "2026-11-23T10:00:00Z", viz={"nodes": []})
+    client = TestClient(create_app(tmp_path))
+    assert client.get("/runs/20261123-100000-a").json()["status"] == "done"
+    assert client.get("/runs/20261123-100000-a/viz").status_code == 200

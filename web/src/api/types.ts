@@ -18,6 +18,11 @@ export interface Report {
   graph: { counts: Record<string, number> } & Record<string, any>
   history: HistoryEntry[]; findings: Finding[]
   sbom: SbomSection
+  dossier?: { app_type?: string; exposure?: string; summary?: string; claims?: Claim[] } | null
+  integrity?: { artifact_sha256?: Record<string, string> } | null
+  remediation?: unknown
+  validation?: unknown
+  vex?: unknown
   evidence: Record<string, Evidence>
   coverage: { node_status: Record<string, string>; degraded?: string[]; failed?: string[]; skipped?: Record<string, string> } & Record<string, any>
 }

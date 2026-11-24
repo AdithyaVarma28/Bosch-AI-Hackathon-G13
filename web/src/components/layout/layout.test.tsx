@@ -20,14 +20,12 @@ test("the product name is shown in the sidebar", () => {
   renderApp()
   expect(screen.getByText("GUARDIAN AI")).toBeInTheDocument()
 })
-test("the live pages are links and the rest are disabled with Coming soon", () => {
+test("every sidebar item is a working link and none is disabled", () => {
   renderApp()
-  for (const l of ["Overview", "Repositories", "Dependency Intelligence", "Vulnerabilities", "Anomaly Detection", "SBOM Explorer", "Evidence Center"]) expect(screen.getByRole("link", { name: l })).toBeInTheDocument()
-  for (const l of ["Agent Activity", "Risk Prioritization", "Remediation", "Validation", "Settings"]) {
-    expect(screen.queryByRole("link", { name: l })).toBeNull()
-    expect(screen.getByText(l).closest("[aria-disabled='true']")).not.toBeNull()
-  }
-  expect(screen.getAllByTitle("Coming soon").length).toBe(5)
+  for (const l of ["Overview", "Repositories", "Dependency Intelligence", "Vulnerabilities", "Anomaly Detection", "SBOM Explorer", "Evidence Center",
+    "Agent Activity", "Risk Prioritization", "Remediation", "Validation", "Settings"]) expect(screen.getByRole("link", { name: l })).toBeInTheDocument()
+  expect(screen.queryAllByTitle("Coming soon").length).toBe(0)
+  expect(document.querySelectorAll("[aria-disabled='true']").length).toBe(0)
 })
 test("the active page is marked aria-current", () => {
   renderApp("/vulnerabilities")

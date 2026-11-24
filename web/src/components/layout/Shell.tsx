@@ -12,14 +12,15 @@ export const NAV: { section: string; items: NavItem[] }[] = [
     { label: "Dependency Intelligence", path: "/dependencies" }, { label: "Vulnerabilities", path: "/vulnerabilities" },
     { label: "Anomaly Detection", path: "/anomalies" }, { label: "SBOM Explorer", path: "/sbom" } ] },
   { section: "INVESTIGATION", items: [
-    { label: "Evidence Center", path: "/evidence" }, { label: "Agent Activity", path: null }, { label: "Risk Prioritization", path: null },
-    { label: "Remediation", path: null }, { label: "Validation", path: null } ] },
-  { section: "SYSTEM", items: [{ label: "Settings", path: null }] },
+    { label: "Evidence Center", path: "/evidence" }, { label: "Agent Activity", path: "/agents" }, { label: "Risk Prioritization", path: "/risk" },
+    { label: "Remediation", path: "/remediation" }, { label: "Validation", path: "/validation" } ] },
+  { section: "SYSTEM", items: [{ label: "Settings", path: "/settings" }] },
 ]
 // Repository Scanning is reached through the New Scan button, as in the design.
 export const PAGE_TITLES: Record<string, string> = {
   "/": "Overview", "/dependencies": "Dependency Intelligence", "/vulnerabilities": "Vulnerabilities", "/anomalies": "Anomaly Detection", "/scan": "Repository Scanning",
   "/repositories": "Repositories", "/sbom": "SBOM Explorer", "/evidence": "Evidence Center",
+  "/agents": "Agent Activity", "/risk": "Risk Prioritization", "/remediation": "Remediation", "/validation": "Validation", "/settings": "Settings",
 }
 
 export function Sidebar() {

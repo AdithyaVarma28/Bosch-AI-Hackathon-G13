@@ -47,8 +47,8 @@ def _exact_version(ecosystem: str, spec: str | None) -> str | None:
     if not s:
         return None
     if ecosystem == "pypi":
-        m = re.match(r"^===?\s*([^\s,;]+)$", s)
-        return m.group(1) if m else None
+        m = re.match(r"^===?\s*([0-9A-Za-z][^\s,;]*)$", s)
+        return m.group(1) if m and not m.group(1).endswith("*") else None
     if ecosystem == "npm":
         return s if re.fullmatch(r"\d+\.\d+\.\d+(-[\w.]+)?", s) else None
     if ecosystem == "maven":
@@ -63,6 +63,13 @@ def _exact_version(ecosystem: str, spec: str | None) -> str | None:
     if ecosystem == "golang":
         return s.split()[0] if s.startswith("v") else None
     return None
+
+
+def _name_from_dist_url(url: str) -> tuple[str, str] | None:
+    """Name and version from a wheel/sdist URL (`pkg_name-1.2.3-py3-none-any.whl`, `pkg-1.2.3.tar.gz`), else None."""
+    tail = url.split("#")[0].split("?")[0].rstrip("/").rsplit("/", 1)[-1]
+    m = re.match(r"^([A-Za-z0-9][A-Za-z0-9._]*)-(\d[^-]*)(?:-[^/]+)?\.whl$", tail) or         re.match(r"^([A-Za-z0-9][A-Za-z0-9._-]*?)-(\d[\w.+!]*)\.(?:tar\.gz|tgz|zip)$", tail)
+    return (m.group(1), m.group(2)) if m else None
 
 
 def _jaccard(a: set[str], b: set[str]) -> float | None:
@@ -126,6 +133,20 @@ def run_sbom_stage(ctx: RunContext) -> None:
             resolutions.append("absent")
             for d in facts.declared_dependencies:
                 if d.source_file != h.manifest:
+                    continue
+                if d.kind == "path":  # local code, not a registry package: naming a component after a path would be wrong
+                    report.notes.append(f"{d.source_file}: local path dependency '{d.name}' not included in the SBOM")
+                    continue
+                if d.kind == "url" and d.ecosystem == "pypi":
+                    named = _name_from_dist_url(d.spec or "")
+                    if not named:
+                        report.notes.append(f"{d.source_file}: URL dependency '{(d.spec or '')[:80]}' has no package name; not included in the SBOM")
+                        continue
+                    name, d_version = named
+                    c = Component(purl=make_purl("pypi", name, d_version), name=name, version=d_version, ecosystem="pypi",
+                                  scope=d.scope, direct=True, source="manifest", seen_by=["manifest"],
+                                  origin=Origin(resolved_url=d.spec), evidence_ids=[d.evidence_id] if d.evidence_id else [])
+                    _merge(comps, [c])
                     continue
                 version = _exact_version(d.ecosystem, d.spec)
                 c = Component(purl=make_purl(d.ecosystem, d.name, version), name=d.name, version=version,

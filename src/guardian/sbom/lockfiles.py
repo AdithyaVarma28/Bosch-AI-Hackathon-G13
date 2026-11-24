@@ -288,7 +288,9 @@ def parse_pipfile_lock(rel_path: str, text: str) -> ParsedLock:
     return out
 
 
-_PIN = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*)(\[[^\]]*\])?\s*===?\s*([^\s;\\]+)")
+# An exact pin is `name==1.2.3` or `name===1.2.3`. The version must start with an alphanumeric and stand alone, so
+# `weird===`, `foo==1.0,!=1.1` and `bar==1.*` are not pins.
+_PIN = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*)(\[[^\]]*\])?\s*===?\s*([0-9A-Za-z][^\s;\\,]*)(?=\s|;|\\|$)")
 
 
 def parse_requirements_pins(rel_path: str, text: str) -> ParsedLock:
@@ -300,7 +302,7 @@ def parse_requirements_pins(rel_path: str, text: str) -> ParsedLock:
         if not line or line.startswith("-"):
             continue
         m = _PIN.match(line)
-        if not m:
+        if not m or m.group(3).endswith("*"):
             out.errors.append(f"unpinned:{rel_path}:{i}:{line[:60]}")
             continue
         hashes = re.findall(r"--hash[= ](\S+)", line)

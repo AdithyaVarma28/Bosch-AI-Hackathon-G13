@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import threading
 import time
 import uuid
@@ -17,6 +18,10 @@ from pydantic import BaseModel
 
 from .context import Settings
 from .ingest import InvalidRepoUrl, parse_repo_url
+
+
+# Run ids look like 20261124-064853-6143a3. Letters, digits, "_" and "-" only: no glob characters, no dots, no slashes.
+_RUN_ID = re.compile(r"[A-Za-z0-9_-]{1,64}")
 
 
 class RunRequest(BaseModel):
@@ -66,6 +71,8 @@ def create_app(out_dir: Path = Path("output"), web_dir: Path | None = None) -> F
         st = runs.get(run_id)
         if st and st.get("run_dir"):
             return Path(st["run_dir"])
+        if not _RUN_ID.fullmatch(run_id):  # never let a URL segment act as a glob pattern ("*", "[a-z]*", "..")
+            raise HTTPException(404, "run not found or not finished")
         hits = list(out_dir.glob(f"*/{run_id}/report.json"))
         if hits:
             return hits[0].parent

@@ -1,4 +1,11 @@
-import { Report } from "../api/types"
+import { Finding, Report } from "../api/types"
+
+/** The page that shows a finding, or null when no page does (e.g. secrets). */
+export function findingHref(f: Finding): string | null {
+  if (f.cls === "vuln") return `/vulnerabilities?finding=${encodeURIComponent(f.id)}`
+  if (["anomaly", "container", "ci", "discrepancy"].includes(f.cls)) return `/anomalies?signal=${encodeURIComponent(f.id)}`
+  return null
+}
 
 export interface EvidenceRow { id: string; kind: string; source: string; locator: string; excerpt: string; sha256: string; capturedAt: string; citedBy: number }
 export interface EvidenceFilter { search: string; kind: string | "All" }
@@ -17,8 +24,7 @@ export function evidenceCitedBy(report: Report, evidenceId: string): { findingId
     .filter((f) => (f.raw_evidence_ids ?? []).includes(evidenceId))
     .map((f) => ({
       findingId: f.id, title: f.title, cls: f.cls,
-      href: f.cls === "vuln" ? `/vulnerabilities?finding=${encodeURIComponent(f.id)}`
-        : ["anomaly", "container", "ci", "discrepancy"].includes(f.cls) ? `/anomalies?signal=${encodeURIComponent(f.id)}` : null,
+      href: findingHref(f),
     }))
 }
 
