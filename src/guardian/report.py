@@ -105,6 +105,10 @@ def build_report(ctx: RunContext, node_status: dict[str, str], plan: dict, error
             "thresholds": THRESHOLDS_NOTE,
         },
         "remediation": None, "validation": None, "vex": None,   # Day 2
+        # data sources of this scan: Day 2 (validation rescans, heal) must reuse them so before/after are comparable
+        "settings": {"offline": ctx.settings.offline, "use_docker": ctx.settings.use_docker,
+                     "advisory_db": str(ctx.settings.advisory_db) if ctx.settings.advisory_db else None,
+                     "registry_snapshot": str(ctx.settings.registry_snapshot) if ctx.settings.registry_snapshot else None},
     }
     arts = {}
     for name in ("facts.json", "sbom.cdx.json", "code_index.json", "graph.json"):

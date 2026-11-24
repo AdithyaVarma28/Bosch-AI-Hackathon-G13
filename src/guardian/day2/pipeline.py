@@ -194,81 +194,92 @@ COMPAT_PEN = {"low": 0, "medium": 5, "high": 15, "unknown": 8}
 
 def n_validate(dc: Day2Context, state) -> dict:
     from .rescan import diff_scans, run_rescan
-    from .sandbox import Sandbox, prepare_branch, validate_candidate
+    from .sandbox import Sandbox, prepare_branch, validate_candidate, work_base
     from .selfcorrect import propose
     sb = Sandbox(dc.ctx, dc.d2)
     done = []
     for key in state.get("approved") or []:
-        plan = dc.d2.plan(key)
-        results: list[ValidationResult] = []
-        for cid in plan.finalists:
-            cand = plan.candidate(cid)
-            root, diff, commit, branch = prepare_branch(dc.ctx, dc.d2, plan, cand)
-            real = applied_hash(plan, {cid: diff})
-            try:
-                require_approval(dc.d2, plan, real)
-            except (ApprovalRequired, ApprovalMismatch) as e:
-                results.append(ValidationResult(plan_key=key, candidate_id=cid, branch=branch, sandbox=sb.effective, applied_hash=real,
-                                                status="error", reason=f"approval gate: {e}", work_dir=str(root)))
-                continue
-            dc.d2.audit("S14", "applied on branch", f"{cid} -> {branch} commit {str(commit)[:12]} (applied hash matches approval)",
-                        plan_key=key)
-            v = validate_candidate(sb, dc.ctx, dc.d2, plan, cand, root, diff, commit, branch, real)
-            if v.status in ("passed", "skipped"):
-                rctx, info = run_rescan(dc.ctx, root, dc.d2.dir / "rescans" / short_key(key) / cid)
-                if rctx is not None:
-                    try:
-                        v.rescan = diff_scans(dc.ctx, rctx, key, cid, plan.finding_ids, dc.policy, info)
-                        dc.after_components[cid] = list(rctx.components)
-                        dc.after_findings[cid] = rctx.store.list_findings()
-                    finally:
-                        rctx.store.close()
-                    dc.d2.audit("S15", "rescanned", f"{cid}: target resolved={v.rescan.target_resolved}, "
-                                f"{len(v.rescan.findings_new)} new finding(s), score {v.rescan.score_before} -> {v.rescan.score_after}",
-                                plan_key=key, evidence_ids=[v.rescan.evidence_id] if v.rescan.evidence_id else [])
-                else:
-                    dc.d2.audit("S15", "rescan failed", f"{cid}: the Day 1 pipeline did not produce a context ({info})", plan_key=key)
-            r = v.rescan
-            v.tournament_score = round(
-                (100 if r and r.target_resolved else 0) - 40 * len(r.new_high if r else []) - 20 * len(v.regressions)
-                - COMPAT_PEN.get(cand.compatibility, 8) + (10 if v.tests_after.ran and not v.tests_after.smoke_only else 0)
-                + (5 if v.status == "passed" else 0) + cand.score / 100, 2)
-            results.append(v)
-        ok = [v for v in results if v.status in ("passed", "skipped") and v.rescan and v.rescan.target_resolved and not v.rescan.new_high]
-        if ok:
-            win = max(ok, key=lambda v: v.tournament_score or 0)
-            win.winner = True
-            dc.d2.audit("S14", "tournament winner", f"{win.candidate_id} (score {win.tournament_score}) of {len(results)} finalist(s)",
-                        plan_key=key)
-        dc.d2.put(f"validation:{key}:{plan.revision}", [v.model_dump() for v in results])
-        dc.validated[key] = plan.revision
-        if not ok:
-            corrections = [CorrectionAttempt.model_validate(x) for x in dc.d2.get(f"corrections:{key}", [])]
-            failed = sorted(results, key=lambda v: -(v.tournament_score or -999))
-            if failed and len(corrections) < dc.ctx.settings.max_corrections:
-                pin = next((p for p in dc.queue if p.plan_key == key), None) or _plan_input(dc, plan)
-                attempt, cand = propose(dc.ctx, plan, pin, failed, dc.reg, dc.adv, len(corrections) + 1)
-                if cand is not None:
-                    cands, _ = evaluate(dc.ctx, pin, [cand], dc.findings, dc.policy, dc.d2.dir / "sim" / short_key(key), 1)
-                    cand = cands[0]
-                    if cand.rejected_reason:
-                        attempt.outcome, attempt.detail = "rejected_by_verifier", attempt.detail + f"; simulation: {cand.rejected_reason}"
-                        plan.status = "failed"
-                        dc.d2.save_plan(plan)
+        try:
+            plan = dc.d2.plan(key)
+            results: list[ValidationResult] = []
+            for cid in plan.finalists:
+                cand = plan.candidate(cid)
+                root, diff, commit, branch = prepare_branch(dc.ctx, dc.d2, plan, cand)
+                real = applied_hash(plan, {cid: diff})
+                try:
+                    require_approval(dc.d2, plan, real)
+                except (ApprovalRequired, ApprovalMismatch) as e:
+                    results.append(ValidationResult(plan_key=key, candidate_id=cid, branch=branch, sandbox=sb.effective, applied_hash=real,
+                                                    status="error", reason=f"approval gate: {e}", work_dir=str(root)))
+                    continue
+                dc.d2.audit("S14", "applied on branch", f"{cid} -> {branch} commit {str(commit)[:12]} (applied hash matches approval)",
+                            plan_key=key)
+                v = validate_candidate(sb, dc.ctx, dc.d2, plan, cand, root, diff, commit, branch, real)
+                if v.status in ("passed", "skipped"):
+                    try:   # rescan output under the SHORT temp base: deep run.db paths exceed Windows MAX_PATH
+                        rctx, info = run_rescan(dc.ctx, root, work_base(dc.ctx) / "rescans" / short_key(key) / cid)
+                        if rctx is not None:
+                            try:
+                                v.rescan = diff_scans(dc.ctx, rctx, key, cid, plan.finding_ids, dc.policy, info)
+                                dc.after_components[cid] = list(rctx.components)
+                                dc.after_findings[cid] = rctx.store.list_findings()
+                            finally:
+                                rctx.store.close()
+                            dc.d2.audit("S15", "rescanned", f"{cid}: target resolved={v.rescan.target_resolved}, "
+                                        f"{len(v.rescan.findings_new)} new finding(s), score {v.rescan.score_before} -> {v.rescan.score_after}",
+                                        plan_key=key, evidence_ids=[v.rescan.evidence_id] if v.rescan.evidence_id else [])
+                        else:
+                            dc.d2.audit("S15", "rescan failed", f"{cid}: the Day 1 pipeline did not produce a context ({info})", plan_key=key)
+                    except Exception as e:   # fail soft per candidate: it simply cannot win the tournament
+                        dc.d2.audit("S15", "rescan error", f"{cid}: {type(e).__name__}: {str(e)[:300]}", plan_key=key)
+                r = v.rescan
+                v.tournament_score = round(
+                    (100 if r and r.target_resolved else 0) - 40 * len(r.new_high if r else []) - 20 * len(v.regressions)
+                    - COMPAT_PEN.get(cand.compatibility, 8) + (10 if v.tests_after.ran and not v.tests_after.smoke_only else 0)
+                    + (5 if v.status == "passed" else 0) + cand.score / 100, 2)
+                results.append(v)
+            ok = [v for v in results if v.status in ("passed", "skipped") and v.rescan and v.rescan.target_resolved and not v.rescan.new_high]
+            if ok:
+                win = max(ok, key=lambda v: v.tournament_score or 0)
+                win.winner = True
+                dc.d2.audit("S14", "tournament winner", f"{win.candidate_id} (score {win.tournament_score}) of {len(results)} finalist(s)",
+                            plan_key=key)
+            dc.d2.put(f"validation:{key}:{plan.revision}", [v.model_dump() for v in results])
+            dc.validated[key] = plan.revision
+            if not ok:
+                corrections = [CorrectionAttempt.model_validate(x) for x in dc.d2.get(f"corrections:{key}", [])]
+                failed = sorted(results, key=lambda v: -(v.tournament_score or -999))
+                if failed and len(corrections) < dc.ctx.settings.max_corrections:
+                    pin = next((p for p in dc.queue if p.plan_key == key), None) or _plan_input(dc, plan)
+                    attempt, cand = propose(dc.ctx, plan, pin, failed, dc.reg, dc.adv, len(corrections) + 1)
+                    if cand is not None:
+                        cands, _ = evaluate(dc.ctx, pin, [cand], dc.findings, dc.policy, dc.d2.dir / "sim" / short_key(key), 1)
+                        cand = cands[0]
+                        if cand.rejected_reason:
+                            attempt.outcome, attempt.detail = "rejected_by_verifier", attempt.detail + f"; simulation: {cand.rejected_reason}"
+                            plan.status = "failed"
+                            dc.d2.save_plan(plan)
+                        else:
+                            new = revise(dc.d2, plan, [cand.id], f"self-correction round {attempt.round}: {attempt.failure_class}", extra=[cand])
+                            attempt.new_plan_hash = new.plan_hash
                     else:
-                        new = revise(dc.d2, plan, [cand.id], f"self-correction round {attempt.round}: {attempt.failure_class}", extra=[cand])
-                        attempt.new_plan_hash = new.plan_hash
+                        plan.status = "escalated"
+                        dc.d2.save_plan(plan)
+                    corrections.append(attempt)
+                    dc.d2.put(f"corrections:{key}", [c.model_dump() for c in corrections])
+                    dc.d2.audit("S14.6", f"self-correction: {attempt.outcome}", attempt.detail, plan_key=key,
+                                evidence_ids=attempt.log_evidence_ids)
                 else:
                     plan.status = "escalated"
                     dc.d2.save_plan(plan)
-                corrections.append(attempt)
-                dc.d2.put(f"corrections:{key}", [c.model_dump() for c in corrections])
-                dc.d2.audit("S14.6", f"self-correction: {attempt.outcome}", attempt.detail, plan_key=key,
-                            evidence_ids=attempt.log_evidence_ids)
-            else:
-                plan.status = "escalated"
+                    dc.d2.audit("S14.6", "escalated", "all finalists failed and the self-correction budget is used up", plan_key=key)
+        except Exception as e:
+            plan = dc.d2.plan(key)
+            if plan and plan.status == "approved":
+                plan.status = "failed"
                 dc.d2.save_plan(plan)
-                dc.d2.audit("S14.6", "escalated", "all finalists failed and the self-correction budget is used up", plan_key=key)
+            dc.validated.setdefault(key, plan.revision if plan else 0)
+            dc.d2.audit("S14", "validation error", f"{type(e).__name__}: {str(e)[:300]}; plan marked failed (re-plan to retry)", plan_key=key)
         done.append(key)
     return {"_message": f"{len(done)} plan(s) validated in sandbox mode '{sb.effective}'" +
             (f" ({sb.unavailable})" if sb.unavailable else "")}
@@ -411,6 +422,7 @@ def load_context(run_dir: Path, settings: Settings) -> RunContext:
     repo = RepoRef.model_validate(rep["repo"])
     if not Path(repo.clone_path).is_dir():
         raise FileNotFoundError(f"scanned checkout not found: {repo.clone_path}")
+    settings = scan_sources(rep, settings)
     store = RunStore(run_dir, rep["run_id"])
     scratch = RunStore(run_dir / "day2" / "_reload", rep["run_id"])
     tmp = RunContext(repo=repo, store=scratch, settings=settings)
@@ -433,6 +445,22 @@ def load_context(run_dir: Path, settings: Settings) -> RunContext:
     if repo.commit and head and head != repo.commit:
         ctx.store.add_evidence("derived", "day2", "checkout", f"checkout moved from {repo.commit} to {head} since the scan")
     return ctx
+
+
+def scan_sources(rep: dict, settings: Settings) -> Settings:
+    """Use the SAME advisory and registry sources as the scan: a rescan against a different advisory database would
+    report findings that were never visible before as if the fix had introduced them."""
+    import dataclasses
+    rec = rep.get("settings")
+    if not isinstance(rec, dict):
+        return settings
+    adv = Path(rec["advisory_db"]) if rec.get("advisory_db") else None
+    reg = Path(rec["registry_snapshot"]) if rec.get("registry_snapshot") else None
+    if adv is not None and not adv.exists():
+        adv = settings.advisory_db
+    if reg is not None and not reg.exists():
+        reg = settings.registry_snapshot
+    return dataclasses.replace(settings, advisory_db=adv, registry_snapshot=reg)
 
 
 @dataclass

@@ -39,6 +39,7 @@ def find_plan(d2: Day2Store, ref: str) -> RemediationPlan:
 
 def check_hash(plan: RemediationPlan, shown: str | None) -> str:
     """The reviewer must quote (a >=12-char prefix of) the hash they reviewed."""
+    shown = (shown or "").strip()          # pasted hashes often carry a newline / CR (Windows)
     if not shown or len(shown) < 12:
         raise ValueError("pass --hash with at least the first 12 characters of the plan hash you reviewed")
     if not plan.plan_hash.startswith(shown.lower()):

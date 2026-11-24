@@ -112,3 +112,28 @@ def test_guards(clone, tmp_path):
     subprocess.run(["git", "clone", "-q", str(clone), str(elsewhere)], check=True)
     with pytest.raises(HealError, match="outside"):
         heal(str(elsewhere), settings(tmp_path), cfg(tmp_path))
+
+
+def test_validation_crash_does_not_loop(clone, tmp_path, monkeypatch):
+    """Regression: a crash inside Day 2 validation marked nothing, so the agent re-validated forever."""
+    from guardian.day2 import sandbox as sbx
+    monkeypatch.setattr(sbx, "validate_candidate", lambda *a, **k: (_ for _ in ()).throw(OSError("unable to open database file")))
+    approve_flask = lambda p, r: ("approve", "ok") if p.plan_key.startswith("pkg:pypi/flask") else None  # noqa: E731
+    st = heal(clone.name, settings(tmp_path), cfg(tmp_path, max_iterations=2), approver=approve_flask, reviewer="alice")
+    assert st.status in ("stopped", "awaiting_approval") and not [f for f in st.fixes if f.status == "applied"]
+    assert sum(1 for d in st.journal if d.action == "validate") == 1          # validated once, no loop
+    s, d2 = open_d2(Path(st.current.run_dir))
+    try:
+        assert d2.plan("pkg:pypi/flask@2.0.1").status == "failed"
+        assert any(t.event == "validation error" for t in d2.timeline())
+    finally:
+        s.close()
+
+
+def test_pasted_hash_with_newline_is_accepted(clone, tmp_path):
+    st = heal(clone.name, settings(tmp_path), cfg(tmp_path))
+    s, d2 = open_d2(Path(st.current.run_dir))
+    flask = next(p for p in d2.plans() if p.plan_key.startswith("pkg:pypi/flask"))
+    s.close()
+    p = record(Path(st.current.run_dir), flask.plan_key, "approve", "bob", flask.plan_hash[:16] + "\r\n")
+    assert p.status == "approved"

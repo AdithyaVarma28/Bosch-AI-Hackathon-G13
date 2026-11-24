@@ -194,6 +194,7 @@ class RescanDiff(BaseModel):
     findings_resolved: list[dict[str, Any]] = Field(default_factory=list)
     findings_open: list[dict[str, Any]] = Field(default_factory=list)      # target findings still present
     findings_new: list[dict[str, Any]] = Field(default_factory=list)
+    findings_preexisting: list[dict[str, Any]] = Field(default_factory=list)   # on untouched components, unseen before
     bands_before: dict[str, int] = Field(default_factory=dict)
     bands_after: dict[str, int] = Field(default_factory=dict)
     score_before: int = 0

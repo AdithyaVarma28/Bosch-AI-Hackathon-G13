@@ -121,7 +121,6 @@ def _d2_settings(offline: bool, no_llm: bool, no_docker: bool, sandbox: str, adv
 
 
 def _print_day2(res) -> None:
-    from .day2.models import RemediationPlan  # noqa: F401
     t = Table(title="Remediation plans")
     for c in ("plan", "status", "recommended", "hash"):
         t.add_column(c)

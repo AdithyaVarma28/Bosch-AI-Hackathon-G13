@@ -540,3 +540,17 @@ def test_web_app_endpoints(day1):
     assert r2.status_code == 200 and "Advisory analysis" in r2.text and 'has("embed")' in r2.text
     assert client.get("/chaos").status_code == 200 and client.get("/chaos/experiments").json()
     assert client.post("/chaos", json={"target": str(tmp / "nope")}).status_code == 422
+
+
+def test_day2_reuses_the_scan_advisory_sources(day1):
+    """Regression: validation started without the snapshot rescanned against a different advisory database, and
+    findings the original scan could not see were blamed on the fix."""
+    from guardian.day2.pipeline import load_context
+    run_dir, tmp = day1
+    rep = json.loads((run_dir / "report.json").read_text())
+    assert rep["settings"]["advisory_db"] == str(ADV)
+    ctx = load_context(run_dir, Settings(offline=True, use_llm=False, use_docker=False, cache_dir=tmp / "cache"))   # no snapshot passed
+    try:
+        assert ctx.settings.advisory_db == ADV and ctx.settings.registry_snapshot == REG
+    finally:
+        ctx.store.close()

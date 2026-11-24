@@ -172,10 +172,10 @@ async function approvalsPanel(id,box,opt){box.innerHTML=`<div class="empty">Load
  const waiting=plans.filter(p=>p.status==="awaiting_approval"),approved=plans.filter(p=>p.status==="approved");
  box.innerHTML=`<div class="msg">You approve an exact <b>plan hash</b>: its finalists, edits and diffs. If anything changes the plan gets a new hash and needs a new approval. Decisions are append-only and name the reviewer (top right).</div>
  ${opt.heal?"":`<div class="row" style="margin:8px 0">${approved.length?`<b>${approved.length} approved plan(s) ready.</b>`:""}<label>Sandbox <select id="vsb"><option>docker</option><option value="none">none</option><option>local</option></select></label>
- <label><input type="checkbox" id="vfx"> fixture snapshots</label><label><input type="checkbox" id="vllm" checked> LLM</label><button class="pri" id="vgo" ${approved.length?"":"disabled"}>Validate approved plans (S14–S16)</button><span id="vst" class="sub"></span></div>`}
+ <span class="sub">advisory &amp; registry sources: same as the scan</span><label><input type="checkbox" id="vllm" checked> LLM</label><button class="pri" id="vgo" ${approved.length?"":"disabled"}>Validate approved plans (S14–S16)</button><span id="vst" class="sub"></span></div>`}
  <div id="pm"></div>${plans.map((p,i)=>planCard(p,i,d)).join("")}`;
  plans.forEach((p,i)=>wirePlan(id,p,i,box,opt));
- const vg=$("#vgo");if(vg)vg.onclick=async()=>{try{await api(`/runs/${id}/remediate`,{method:"POST",body:{sandbox:$("#vsb").value,fixture_snapshots:$("#vfx").checked,use_llm:$("#vllm").checked}});
+ const vg=$("#vgo");if(vg)vg.onclick=async()=>{try{await api(`/runs/${id}/remediate`,{method:"POST",body:{sandbox:$("#vsb").value,use_llm:$("#vllm").checked}});
   $("#vst").textContent="validating… (sandbox build/test, rescan, verify)";const t=setInterval(async()=>{const r=await api(`/runs/${id}`).catch(()=>({}));if(r.day2&&r.day2!=="running"){clearInterval(t);approvalsPanel(id,box,opt)}},3000);timers.push(t)}catch(e){$("#vst").innerHTML=fail(e)}}}
 function planCard(p,i,d){const rep=(d.reports||{})[p.plan_key];const wait=p.status==="awaiting_approval";
  const fins=p.finalists.map(c=>p.candidates.find(x=>x.id===c)).filter(Boolean);const others=p.candidates.filter(c=>!p.finalists.includes(c.id)&&c.diff&&!c.rejected_reason);

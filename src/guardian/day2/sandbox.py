@@ -80,7 +80,6 @@ def _venv_bin(mode: str, root: Path, exe: str) -> str:
 
 def detect_projects(ctx: RunContext, root: Path, mode: str) -> list[Project]:
     out: list[Project] = []
-    facts = ctx.facts
     has_py_tests = any((root / d).is_dir() for d in ("tests", "test")) or any(root.glob("test_*.py"))
     reqs = [p for p in ("requirements.txt", "requirements-dev.txt", "requirements/dev.txt") if (root / p).is_file()]
     if reqs or (root / "pyproject.toml").is_file() or (root / "setup.py").is_file():

@@ -33,7 +33,7 @@ from .models import Edit, Investigation, RemediationCandidate, RemediationPlan, 
 from .policy import Policy, candidate_violations
 from .registry import RegistryClient
 from .simulate import is_historical, simulate
-from .versions import (bump_kind, compare, is_prerelease, major, max_satisfying, range_floor, sort_versions)
+from .versions import (compare, is_prerelease, major, max_satisfying, range_floor, sort_versions)
 
 COMPAT_PENALTY = {"low": 0, "medium": 10, "high": 25, "unknown": 15}
 NEW_BAND_PENALTY = {"P0": 60, "P1": 35, "P2": 10, "P3": 2, "Unprioritized": 2}
@@ -82,7 +82,6 @@ def plan_key(ctx: RunContext, f: Finding) -> tuple[str, str]:
 def build_queue(ctx: RunContext, findings: list[Finding], scores: list[RiskScore], investigations: dict[str, Investigation],
                 max_queue: int, only: list[str] | None = None, advisories: dict | None = None) -> list[PlanInput]:
     by_id = {f.id: f for f in findings}
-    sc = {s.finding_id: s for s in scores}
     groups: dict[str, PlanInput] = {}
     for s in scores:
         f = by_id.get(s.finding_id)

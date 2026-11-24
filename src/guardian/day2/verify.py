@@ -8,13 +8,11 @@ rescan and the policy results. It re-checks the claims and may DOWNGRADE with ci
 """
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from ..agent.verifier import guard_llm_claims, safe_claim, verify_claims
 from ..context import RunContext
 from ..llm import LLMUnavailable, fence
-from ..models import Claim, Finding
 from .models import (VERDICT_ORDER, ApprovalRecord, CorrectionAttempt, Investigation, PolicyResult, RemediationCandidate,
                      RemediationPlan, RescanDiff, RiskScore, ValidationResult, VerificationReport, VerifierCheck, VerifierReview)
 from .patcher import diff_sha, unified_diff
@@ -199,6 +197,8 @@ def build_report(ctx: RunContext, d2: Day2Store, plan: RemediationPlan, scores: 
         remaining += [{"title": x["title"], "band": x["band"], "why": "still open after the fix"} for x in rescan.findings_open]
         remaining += [{"title": x["title"], "band": x["band"], "why": "introduced by the fix (below the block threshold)"}
                       for x in rescan.findings_new if x["band"] not in ("P0", "P1")]
+        remaining += [{"title": x["title"], "band": x["band"], "why": "present before the fix on an untouched component "
+                       "(not visible to the original scan's advisory data)"} for x in rescan.findings_preexisting]
     remaining += [{"title": o["title"], "band": o["band"], "why": "historical signal (a past commit); recorded, not resolvable by a code change"}
                   for o in original if o["historical"]]
     accepted = [a.model_dump() for a in d2.approvals(plan.plan_key) if a.decision == "accept_risk"]

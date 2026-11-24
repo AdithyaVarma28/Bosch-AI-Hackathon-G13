@@ -35,7 +35,7 @@ from ..context import Settings
 from ..llm import LLMClient, LLMUnavailable, fence
 from ..models import Finding
 from ..orchestrator import RUNS, run_pipeline
-from ..runner import ToolFailed, default_runner, git
+from ..runner import ToolFailed, git
 from ..store import now_iso
 from .decisions import open_d2, record
 from .models import RemediationCandidate, RemediationPlan, VerificationReport
@@ -93,6 +93,7 @@ class Iteration(BaseModel):
     applied: list[str] = Field(default_factory=list)       # plan keys applied in this iteration
     touched: list[str] = Field(default_factory=list)       # files changed by fixes applied in this iteration
     skipped: list[str] = Field(default_factory=list)       # plan keys the reviewer skipped in this iteration
+    validated: list[str] = Field(default_factory=list)     # plan keys sent to Day 2 validation in this iteration (loop guard)
 
 
 class Decision(BaseModel):
@@ -277,7 +278,9 @@ def _allowed(h: HealRun) -> tuple[list[str], str, str]:
     it = h.st.current
     plans, reports = plans_of(it.run_dir)
     awaiting = [p for p in plans if p.status == "awaiting_approval" and p.plan_key not in it.skipped]
-    approved = [p for p in plans if p.status == "approved"]
+    approved_all = [p for p in plans if p.status == "approved"]
+    approved = [p for p in approved_all if p.plan_key not in it.validated]      # validate each plan once per iteration
+    stuck = [p for p in approved_all if p.plan_key in it.validated]
     applicable = [p for p in plans if p.status == "validated" and p.plan_key in reports
                   and reports[p.plan_key].verdict in h.cfg.accept and p.plan_key not in it.applied
                   and not any(f.plan_key == p.plan_key and f.iteration == it.n for f in h.st.fixes)]
@@ -308,6 +311,9 @@ def _allowed(h: HealRun) -> tuple[list[str], str, str]:
         allowed.append("await_approval")
         if default == "stop":
             default, why = "await_approval", f"{len(awaiting)} plan(s) need a human decision"
+    if default == "stop" and not why and stuck:
+        why = (f"validation did not complete for {', '.join(p.plan_key for p in stuck)} (see the Day 2 audit trail); "
+               "stopping instead of retrying in a loop")
     if default == "stop" and not why:
         not_acc = [k for k, r in reports.items() if r.verdict not in h.cfg.accept]
         why = ("nothing actionable: " + (f"verdicts below the acceptance bar for {', '.join(not_acc)}" if not_acc
@@ -375,6 +381,8 @@ def n_await(h: HealRun) -> str:
 def n_validate(h: HealRun) -> str:
     from .pipeline import run_day2
     it = h.st.current
+    plans, _ = plans_of(it.run_dir)
+    it.validated = sorted(set(it.validated) | {p.plan_key for p in plans if p.status == "approved"})
     res = run_day2(Path(it.run_dir), _scan_settings(h, True), emit=h.emit)
     h.log("validate", "; ".join(f"{r.title[:50]}: {r.verdict}" for r in res.reports) or "nothing validated")
     return "assess"

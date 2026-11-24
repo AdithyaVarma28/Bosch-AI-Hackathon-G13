@@ -49,8 +49,6 @@ def diff_scans(ctx: RunContext, rctx: RunContext, plan_key: str, candidate_id: s
     resolvable = [i for i in target_ids if i in bmap and not is_historical(bmap[i])]
     d = RescanDiff(plan_key=plan_key, candidate_id=candidate_id, rescan_run_dir=info.get("run_dir", ""),
                    node_status=info.get("node_status", {}))
-    b_comp = {c.purl: c for c in ctx.components}
-    a_comp = {c.purl: c for c in rctx.components}
     b_names = {(c.ecosystem, c.name): c for c in ctx.components}
     a_names = {(c.ecosystem, c.name): c for c in rctx.components}
     for key, c in a_names.items():
@@ -62,7 +60,13 @@ def diff_scans(ctx: RunContext, rctx: RunContext, plan_key: str, candidate_id: s
     d.sbom_added.sort()
     d.findings_resolved = [_brief(bmap[i]) for i in resolvable if i not in after_ids]
     d.findings_open = [_brief(bmap[i]) for i in resolvable if i in after_ids]
-    new = [f for f in after_f if f.id not in before_ids]
+    new_all = [f for f in after_f if f.id not in before_ids]
+    before_purls = {c.purl for c in ctx.components}
+    # a vulnerability on a component the fix did not add or change existed before (different/updated advisory data):
+    # reported, but not blamed on the fix
+    pre = [f for f in new_all if f.cls == "vuln" and f.subject in before_purls]
+    new = [f for f in new_all if f not in pre]
+    d.findings_preexisting = [_brief(f) for f in pre]
     # history findings created by the remediation commit itself are new facts too; keep them, they are visible
     d.findings_new = [_brief(f) for f in sorted(new, key=lambda f: (f.band or "Z", f.title))]
     d.new_high = [f.title for f in new if f.band in ("P0", "P1")]
