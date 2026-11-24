@@ -104,7 +104,7 @@ class UnifiedGraph:
                 py = cf.language == "python"   # call graph + definitions are Python-only on Day 1
                 for d in (cf.definitions if py else []):
                     if d.type in ("function", "async_function", "method"):
-                        fn = ug.node(f"func:{d.id}", type="function", label=d.id.split("::")[1], file=cf.path,
+                        fn = ug.node(f"func:{d.id}", type="function", label=d.id.split("::")[-1], file=cf.path,
                                      line=d.line, end_line=d.end_line)
                         func_nodes.add(fn)
                         ug.edge(mod, fn, "DEFINES", evidence_status="statically-observed", discovered_by="ast", line=d.line)
@@ -113,7 +113,7 @@ class UnifiedGraph:
                     if c.kind == "internal" and c.resolved_target:
                         tgt = f"func:{c.resolved_target}"
                         if tgt not in ug.g:  # class constructor or module-level target
-                            ug.node(tgt, type="function", label=c.resolved_target.split("::")[1], file=c.resolved_target.split("::")[0])
+                            ug.node(tgt, type="function", label=c.resolved_target.split("::")[-1], file=c.resolved_target.split("::")[0])
                         ug.edge(src, tgt, "CALLS", line=c.line, evidence_status="statically-observed", discovered_by="ast",
                                 locator=f"{cf.path}:{c.line}")
                     elif c.kind == "external" and c.import_name:
@@ -146,7 +146,7 @@ class UnifiedGraph:
                             discovered_by="ast", locator=f"{cf.path}:{e.line}")
                 for m in cf.db_models:
                     n = ug.node(f"table:{m.table or m.class_id}", type="db_table", label=m.table or m.class_id, model=m.class_id)
-                    ug.edge(ug.node(f"func:{m.class_id}", type="model", label=m.class_id.split("::")[1], file=cf.path),
+                    ug.edge(ug.node(f"func:{m.class_id}", type="model", label=m.class_id.split("::")[-1], file=cf.path),
                             n, "MAPS_TO", evidence_status="statically-observed", discovered_by="ast", line=m.line)
                 for a in cf.db_access:
                     table = ug._table_for(code, a.model) if a.model else None
@@ -199,7 +199,7 @@ class UnifiedGraph:
         fid = func_id or f"{path}::<module>"
         nid = f"func:{fid}"
         if nid not in self.g:
-            self.node(nid, type="function", label=fid.split("::")[1], file=fid.split("::")[0])
+            self.node(nid, type="function", label=fid.split("::")[-1], file=fid.split("::")[0])
             if f"file:{path}" in self.g:
                 self.edge(f"file:{path}", nid, "DEFINES", evidence_status="statically-observed", discovered_by="ast")
         return nid

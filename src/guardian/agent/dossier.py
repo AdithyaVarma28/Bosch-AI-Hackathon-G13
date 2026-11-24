@@ -59,7 +59,7 @@ def rule_dossier(ctx: RunContext) -> Dossier:
     for cf in (ctx.code_index.files if ctx.code_index else []):
         for r in cf.routes[:5]:
             ev = store.add_evidence("raw", "ast", f"{cf.path}:{r.line}", f"{r.method} {r.path} -> {r.handler}")
-            claims.append(Claim(text=f"route `{r.path}` ({r.method}) is handled by `{r.handler.split('::')[1]}`", type="fact",
+            claims.append(Claim(text=f"route `{r.path}` ({r.method}) is handled by `{r.handler.split('::')[-1]}`", type="fact",
                                 evidence_ids=[ev.id], confidence="high"))
     for df in (facts.dockerfiles if facts else [])[:3]:
         if df.evidence_id and df.stages:

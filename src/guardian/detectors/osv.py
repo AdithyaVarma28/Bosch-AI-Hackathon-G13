@@ -196,7 +196,9 @@ def fixed_versions(record: dict, ecosystem: str, name: str) -> list[str]:
 
 
 def _vkey(v: str):
-    return [int(x) if x.isdigit() else x for x in re.split(r"[.\-+]", v)]
+    # (0, int) for numeric parts, (1, str) otherwise: ints and strings never compare directly
+    # (e.g. "1.2.0" vs "1.2.0-rc1" or Go "v1.2.3"), which used to raise TypeError
+    return [(0, int(x), "") if x.isdigit() else (1, 0, x) for x in re.split(r"[.\-+]", (v or "").lstrip("vV"))]
 
 
 def cve_aliases(record: dict) -> list[str]:
