@@ -1,0 +1,8 @@
+# Legitimate names that look like a popular package (D1 typosquat check skips them).
+# name: reason
+python-dateutil: official distribution name of dateutil
+pyyaml: official distribution of yaml
+typing-extensions: official
+types-requests: typeshed stubs for requests
+requests-toolbelt: maintained by the requests team
+requests-oauthlib: maintained by the requests team

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10231f">
+  <title>Guardian · Repository intelligence</title>
+  <link rel="stylesheet" href="styles.css?v=6">
+  <link rel="stylesheet" href="dashboard.css?v=6">
+  <link rel="stylesheet" href="risk.css?v=6">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#overview" aria-label="Guardian home"><span class="brand-mark">G</span><span>guardian<span class="brand-sub">SUPPLY CHAIN INTELLIGENCE</span></span></a>
+      <div class="side-label">WORKSPACE</div>
+      <button class="repo-switcher" id="repo-switcher" title="Switch scan or start a new one"><span class="repo-icon" id="repo-icon">MS</span><span><b id="side-repo">mini-shop</b><small id="repo-kind">Python repository</small></span><span class="chevron">⌄</span></button>
+      <div class="side-label nav-label">INVESTIGATE</div>
+      <nav id="navigation" aria-label="Dashboard sections">
+        <button class="nav-item active" data-view="overview"><span class="nav-icon">◫</span>Overview</button>
+        <button class="nav-item" data-view="architecture"><span class="nav-icon">⌘</span>Architecture &amp; SBOM<span class="nav-count" id="module-count"></span></button>
+        <button class="nav-item" data-view="risk"><span class="nav-icon">⚑</span>Risk detection<span class="nav-count" id="risk-count"></span></button>
+        <button class="nav-item" data-view="scan"><span class="nav-icon">＋</span>New scan</button>
+      </nav>
+      <div class="sidebar-bottom"><div class="scan-indicator"><span class="live-dot"></span><span><b>Scan complete</b><small id="scan-time">HEAD · 2 min ago</small></span></div><div class="sidebar-foot">SUPPLY CHAIN GUARDIAN <span>stages 1–6</span></div></div>
+    </aside>
+
+    <main class="main-area">
+      <header class="topbar"><div class="breadcrumb"><span>Repositories</span><span class="crumb-sep">/</span><b id="top-repo">mini-shop</b><span class="demo-pill"><i></i> DEMO DATA</span></div><div class="top-actions"><button class="quiet-button" id="new-scan-button"><span>＋</span> New scan</button><button class="quiet-button" id="import-button"><span>↥</span> Import scan</button><input id="file-input" type="file" accept="application/json,.json" hidden><button class="avatar" title="Workspace">G</button></div></header>
+      <div id="import-status" class="import-status" role="status" hidden></div>
+      <div id="app" class="page-container" aria-live="polite"></div>
+    </main>
+  </div>
+  <script src="data/demo-data.js?v=6"></script>
+  <script src="app.js?v=6"></script>
+</body>
+</html>
