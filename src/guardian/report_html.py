@@ -53,10 +53,17 @@ header{position:sticky;top:0;z-index:20}.topnav{display:flex;gap:4px;margin-left
 </style></head><body>
 <header><div><h1>Guardian: <span id="repo"></span></h1><div class="sub" id="meta"></div></div>
 <nav class="topnav" id="topnav"><button data-p="report" class="on">Report<span class="n" id="n-report"></span></button>
-<button data-p="graph">Dependency graph<span class="n" id="n-graph"></span></button><button data-p="sbom">SBOM<span class="n" id="n-sbom"></span></button></nav></header>
+<button data-p="graph">Dependency graph<span class="n" id="n-graph"></span></button><button data-p="sbom">SBOM<span class="n" id="n-sbom"></span></button>
+<button data-p="remediation" id="nav-rem" hidden>Remediation<span class="n" id="n-rem"></span></button></nav></header>
 <main>
 <div class="page on" data-page="report">
 <section class="card"><h2>What is in the application</h2><div id="dossier"></div><div class="kpis" id="kpis" style="margin-top:12px"></div></section>
+</div>
+
+<div class="page" data-page="remediation">
+<section class="card"><h2>From detection to verified remediation</h2><div class="kpis" id="remkpis"></div>
+<p class="sub" id="remnote"></p></section>
+<section class="card" style="padding:0;overflow:hidden"><iframe id="remframe" title="Remediation" style="width:100%;height:82vh;border:0"></iframe></section>
 </div>
 
 <div class="page" data-page="sbom">
@@ -96,7 +103,7 @@ header{position:sticky;top:0;z-index:20}.topnav{display:flex;gap:4px;margin-left
 </div>
 
 <div class="page on" data-page="report">
-<section class="card"><h2>What appears risky</h2><div class="bar" id="bands"></div><table><thead><tr><th>Band</th><th>Finding</th><th>Class</th><th>Locator</th></tr></thead><tbody id="ftable"></tbody></table>
+<section class="card"><h2>What appears risky</h2><div class="bar" id="bands"></div><table><thead><tr><th>Band</th><th>Finding</th><th>Class</th><th>Locator</th><th id="d2h" hidden>Remediation</th></tr></thead><tbody id="ftable"></tbody></table>
 <div class="sub" id="thr" style="margin-top:8px"></div></section>
 <section class="card" id="fdetail" hidden></section>
 <section class="card"><h2>What changed</h2><table><thead><tr><th>Commit</th><th>Date</th><th>Message</th><th>Added</th><th>Removed</th><th>Changed</th></tr></thead><tbody id="hist"></tbody></table></section>
@@ -326,8 +333,15 @@ let bandFilter="all";const bands=["all","P0","P1","P2","P3","Unprioritized"];
 $("bands").innerHTML=bands.map(b=>`<button data-b="${b}" class="${b==="all"?"on":""}">${b} ${b==="all"?R.findings.length:(S.bands[b]||0)}</button>`).join("");
 $("bands").onclick=e=>{if(!e.target.dataset.b)return;bandFilter=e.target.dataset.b;[...$("bands").children].forEach(x=>x.classList.toggle("on",x===e.target));drawF()};
 const CL={C:"Confirmed",S:"Strong signal",W:"Weak signal"};
+const REM=R.remediation||null, BYF=(REM&&REM.by_finding)||{};
+function d2cell(id){const x=BYF[id];if(!x)return REM?'<td class="sub">—</td>':"";
+ return `<td><b>${x.score}</b> <span class="sub">${esc((x.bucket||"").replace("_"," "))}</span>${x.verdict?`<br><span class="sig">${esc(x.verdict)}</span>`:x.plan_status?`<br><span class="sub">${esc(x.plan_status.replace("_"," "))}</span>`:""}</td>`}
 function drawF(){$("ftable").innerHTML=R.findings.filter(f=>bandFilter==="all"||f.band===bandFilter).map(f=>
- `<tr class="f" data-id="${f.id}"><td><span class="badge ${esc(f.band)}">${esc(f.band)}</span></td><td>${esc(f.title)}<span class="sig">${CL[f.classification]}</span></td><td>${esc(f.attack_class||f.cls)}</td><td class="sub">${esc(f.locator)}</td></tr>`).join("")}
+ `<tr class="f" data-id="${f.id}"><td><span class="badge ${esc(f.band)}">${esc(f.band)}</span></td><td>${esc(f.title)}<span class="sig">${CL[f.classification]}</span></td><td>${esc(f.attack_class||f.cls)}</td><td class="sub">${esc(f.locator)}</td>${d2cell(f.id)}</tr>`).join("")}
+if(REM){$("d2h").hidden=false;$("nav-rem").hidden=false;$("n-rem").textContent=(REM.plans||[]).length;
+ const v=REM.verdicts||{};$("remkpis").innerHTML=[["Plans",(REM.plans||[]).length],...Object.entries(REM.plan_status||{}).map(([k,n])=>[k.replace("_"," "),n]),
+  ...Object.entries(v)].map(([k,n])=>`<div class="kpi"><span class="sub">${esc(k)}</span><b>${esc(n)}</b></div>`).join("");
+ $("remnote").textContent="Day 2 stages S10-S16 ran in the same pipeline after detection. Plans wait at the human approval gate: guardian approve <run_dir> <plan> --hash <hash> --reviewer <name>, then guardian remediate <run_dir>."}
 drawF();$("thr").textContent=R.coverage.thresholds;
 $("ftable").onclick=e=>{const tr=e.target.closest("tr");if(tr)openFinding(tr.dataset.id)};
 function openFinding(id){const f=FIND[id];if(!f)return;const x=f.explanation||{};const s=f.signals||{};
@@ -340,9 +354,13 @@ function openFinding(id){const f=FIND[id];if(!f)return;const x=f.explanation||{}
  ${s.exposed_routes&&s.exposed_routes.length?`<p><b>Reachable from routes (static):</b> ${s.exposed_routes.map(esc).join(", ")}</p>`:""}
  <h3>Explanation <span class="sub">(${esc(x.generated_by||"none")})</span></h3>${(x.claims||[]).map(claimHtml).join("")}
  ${x.counterfactual?`<p><b>What would change it:</b> ${esc(x.counterfactual)}</p>`:""}<p class="sub">${esc(x.notes||"")}</p>
+ ${BYF[id]?`<h3>Remediation (Day 2)</h3><p>Risk score <b>${BYF[id].score}</b> (${esc(BYF[id].bucket.replace("_"," "))}, confidence ${esc(BYF[id].confidence)}) · <span class="sub">${esc(BYF[id].breakdown||"")}</span></p>
+ ${BYF[id].plan_key?`<p>Plan <span class="mono">${esc(BYF[id].plan_key)}</span> · ${esc(BYF[id].plan_status||"")}${BYF[id].verdict?" · verdict <b>"+esc(BYF[id].verdict)+"</b>":""}<br>${esc(BYF[id].recommended||"")}</p>`:""}
+ ${BYF[id].investigation?`<p>Investigation: <b>${esc(BYF[id].investigation)}</b></p>`:""}<p><button data-rem="1">Open in Remediation</button></p>`:""}
  <h3>Raw evidence</h3><div class="claim">${(f.raw_evidence_ids||[]).map(e=>`<span class="ev" data-ev="${esc(e)}">${esc(e)}</span>`).join("")}</div>
  <details><summary class="sub">All signals</summary><pre>${esc(JSON.stringify(s,null,2))}</pre></details>`;
  const b=el.querySelector("[data-show]");if(b)b.onclick=()=>showInGraph(b.dataset.show);
+ const rb=el.querySelector("[data-rem]");if(rb)rb.onclick=()=>showPage("remediation");
  if(page!=="report")showPage("report");
  el.scrollIntoView({behavior:"smooth"})}
 function showInGraph(n){if(!NODES[n])return;showPage("graph");st.view=NODES[n].type==="artifact"?"tree":"all";st.depth=maxDepth;$("depth").value=maxDepth;syncViews();st.sel=n;draw();
@@ -430,9 +448,10 @@ let page="report",graphReady=false;
 function showPage(p){page=p;document.querySelectorAll(".page").forEach(x=>x.classList.toggle("on",x.dataset.page===p));
  [...$("topnav").querySelectorAll("button")].forEach(b=>b.classList.toggle("on",b.dataset.p===p));
  if(location.hash!=="#"+p)history.replaceState(null,"","#"+p);
+ if(p==="remediation"&&!$("remframe").getAttribute("src"))$("remframe").setAttribute("src","day2/remediation.html");
  if(p==="graph"){if(!graphReady){graphReady=true;syncViews();draw();side()}else if(cy){cy.resize();cy.fit(undefined,30)}}
  window.scrollTo({top:0})}
 $("topnav").onclick=e=>{const b=e.target.closest("button");if(b)showPage(b.dataset.p)};
 $("n-report").textContent=R.findings.length;$("n-graph").textContent=V.nodes.length;
-showPage(["graph","sbom","report"].includes(location.hash.slice(1))?location.hash.slice(1):"report");
+showPage(["graph","sbom","report"].concat(REM?["remediation"]:[]).includes(location.hash.slice(1))?location.hash.slice(1):"report");
 </script></body></html>"""

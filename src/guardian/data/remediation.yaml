@@ -1,0 +1,32 @@
+# Remediation reference data (curated, small, reviewed by humans). as_of matters: update before each demo.
+as_of: "2026-11-23"
+# Base-image tags Guardian proposes when a Dockerfile uses `latest`, no tag, or an EOL tag.
+# Pinning by digest is still recommended; Guardian cannot resolve digests offline.
+base_images:
+  node: "22-slim"
+  python: "3.12-slim"
+  postgres: "16"
+  redis: "7"
+  nginx: "1.27-alpine"
+  alpine: "3.20"
+  ubuntu: "24.04"
+  debian: "12-slim"
+  golang: "1.23"
+  openjdk: "eclipse-temurin:21-jre"
+  eclipse-temurin: "21-jre"
+  ruby: "3.3-slim"
+  php: "8.3-fpm"
+  mysql: "8.4"
+# Maintained replacements for abandoned / unfixable packages (ecosystem -> name -> replacements).
+alternatives:
+  npm:
+    request: ["axios", "node-fetch"]
+    mkdirp: ["fs.mkdirSync({recursive: true}) (built-in)"]
+    left-pad: ["String.prototype.padStart (built-in)"]
+    node-uuid: ["uuid"]
+    colors: ["chalk", "picocolors"]
+    event-stream: ["through2"]
+  pypi:
+    pycrypto: ["pycryptodome"]
+    pyyaml: []
+    nose: ["pytest"]

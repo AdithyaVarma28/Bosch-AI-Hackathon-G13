@@ -1,4 +1,4 @@
-﻿# Guardian: Software Supply Chain Guardian (Day 1)
+﻿# Guardian: Software Supply Chain Guardian (Day 1 + Day 2)
 
 Paste a GitHub URL (or a local path) and get: what is in the application, what changed, and what appears risky, with evidence for every claim.
 
@@ -32,7 +32,9 @@ Or put `GROQ_API_KEY=...` in a `.env` file in the folder you run `guardian` from
 .\.venv\Scripts\guardian.exe serve --port 8765
 ```
 
-Flags: `--offline` (cache only), `--no-llm`, `--no-docker`, `--history 50`, `--explain 10`, `--model <groq model>`.
+`scan` runs **one pipeline from detection to remediation**: Day 1 detection (SBOM, graph, vulnerabilities, suspicious changes, evidence) flows straight into Day 2 (prioritize, investigate, plan fixes) and stops at the human approval gate. Use `--detect-only` to stop after detection.
+
+Flags: `--offline` (cache only), `--no-llm`, `--no-docker`, `--history 50`, `--explain 10`, `--model <groq model>`, `--sandbox docker|local|none`, `--advisory-db`, `--registry-snapshot`, `--detect-only`.
 
 Each run writes `output/<repo>/<run_id>/`:
 
@@ -103,13 +105,53 @@ ingest â†’ cartographer â†’ [resolver_sbom â€– code_index] â†�
 - **Verifier** (deterministic) rejects claims citing unknown evidence or quoting tokens not in the evidence, and downgrades facts that cite only derived evidence.
 - Every node fails soft and reports `ok / degraded / skipped / failed` in the Coverage panel.
 
+## Day 2: from detection to verified remediation
+
+Design: [docs/day2_plan.md](docs/day2_plan.md). Code: `src/guardian/day2/`.
+
+Day 2 is not a separate tool: its stages are nodes in the same LangGraph as detection.
+
+```
+ingest → … → vuln_intel ‖ change_anomaly ‖ … → correlator → evidence_agent → report        (detection)
+  → day2_start → prioritize (S10) → investigate (S11) → remediation_plan (S12) → approval_gate (S13)
+  → [approved] validate (S14 + S15 rescan, S14.6 self-correction) → verify (S16) → remediation_report
+  → [nothing approved] remediation_report: stop and wait for a reviewer
+```
+
+`guardian approve …` records a decision; `guardian remediate <run_dir>` resumes the same Day 2 nodes from the gate. Rescans of a fix run the detection part only (no recursion). `report.html` is one page: the findings table shows each finding's Day 2 score, bucket, plan status and verdict, and a **Remediation** tab holds the full Day 2 report.
+
+| Stage | What it does |
+|---|---|
+| S10 Prioritize | 0-100 score per finding: severity + exploitability (KEV/EPSS/malicious advisory) + reachability (symbol called > route > imported > not referenced) + exposure + production use + criticality (what the using code touches) + policy. Separate confidence (data quality). Buckets: Fix now / Schedule / Monitor. |
+| S11 Investigate | Non-CVE signals: lockfile/manifest diff across the commit, package archive content diff (in memory, never executed), publisher/age/provenance/repository checks, lockfile vs registry integrity. Verdict + typed claims (fact cites raw evidence, inference labelled). |
+| S12 Remediate | Deterministic candidates: smallest safe upgrade, latest in major, parent upgrade for transitive vulns (graph-aware, range-floor aware), npm override / pip pin, remove/block typosquats, restore lockfile source, remove install hook, base-image tag, action SHA pin, least-privilege permissions, escalate. Each candidate is applied to a copy and re-scanned (target resolved? new advisories? policy? major-version API risk?), then ranked. |
+| S13 Approve | Reviewer approves the exact plan hash (finalists, edits, diff hashes). Any change makes a new revision that needs a new approval. Approvals and audit are append-only (SQLite triggers). |
+| S14 Validate | Throwaway copy with history, branch `guardian/fix-<id>`, commit. Install/build/test in the sandbox on the original and the patched tree: a regression is a test that passed before and fails after. No tests → smoke check (caps the verdict). |
+| S15 Rescan | The Day 1 pipeline runs unchanged on the branch; SBOM diff, findings resolved/open/new, band and score deltas, target advisories checked against every component of the new tree. |
+| S16 Verify | Policy-as-code (`src/guardian/data/default_policy.yaml`, floor rules cannot be weakened by a repo `guardian-policy.yaml`) sets the deterministic verdict; an independent verifier re-checks the evidence and can only downgrade. Report, VEX, patch export after a second approval. |
+
+```powershell
+# offline demo on the fixture (bundled advisory + registry snapshots)
+.\.venv\Scripts\guardian.exe fixture output/fixtures
+.\.venv\Scripts\guardian.exe scan output/fixtures/guardian-fixture --offline --advisory-db fixture --registry-snapshot fixture
+.\.venv\Scripts\guardian.exe plans output/guardian-fixture/<run_id>
+.\.venv\Scripts\guardian.exe approve output/guardian-fixture/<run_id> "pkg:pypi/flask@2.0.1" --hash <first 16 chars> --reviewer <name>
+.\.venv\Scripts\guardian.exe remediate output/guardian-fixture/<run_id> --advisory-db fixture --registry-snapshot fixture
+.\.venv\Scripts\guardian.exe export-patch output/guardian-fixture/<run_id> flask --reviewer <name>
+```
+
+- `--sandbox docker` (default) needs Docker Desktop running. `--sandbox local` is an explicit opt-in that runs the repository's install and tests on this machine (temp copy, scrubbed environment). `--sandbox none` skips build/test; the verdict is then at most *Partially verified*.
+- `guardian reject` and `guardian accept-risk --reason ... --expires YYYY-MM-DD` record the other decisions; `remediate --interactive` asks in the terminal.
+- Outputs in `<run_dir>/day2/`: `report.json`, `remediation.html`, `priority.json`, `investigations.json`, `remediation_plan.json`, `verification/*.json`, `vex.cdx.json`, `patches/`. The Day 1 `report.json` fields `remediation`, `validation` and `vex` point to them.
+- API: `POST /runs` runs the whole pipeline (`"remediate": false` for detection only); `POST /runs/{id}/remediate` resumes Day 2, `GET /runs/{id}/plans`, `POST /runs/{id}/decisions`, `POST /runs/{id}/patches`, `GET /runs/{id}/remediation(.html)`.
+
 ## Tests
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-The suite runs offline (no network, Docker or LLM) against the generated `guardian-fixture` repo.
+The suite runs offline (no network, Docker or LLM) against the generated `guardian-fixture` repo. Day 2 tests replace Docker with a deterministic fake runner (git still runs for real on the throwaway branch) and use a scripted, deliberately lying LLM to check the guardrails.
 
 ## Known limitations (Day 1)
 
@@ -121,3 +163,11 @@ The suite runs offline (no network, Docker or LLM) against the generated `guardi
 - `bun.lock` and `pnpm-lock.yaml` are detected but not parsed; those projects fall back to resolution or declared dependencies.
 - Without Docker, pinned `requirements.txt` projects have no transitive dependency data.
 - Priority thresholds are unvalidated starting values.
+
+## Known limitations (Day 2)
+
+- Automatic edits exist for npm (`package.json`, `package-lock.json` v1-v3) and pip `requirements*.txt`; other ecosystems get a suggested version and an escalation.
+- Without Docker or npm, lockfile edits are done by Guardian itself; integrity values unknown offline are left out, and npm must record them on the next install.
+- Parent upgrades are searched for depth-2 paths (direct parent -> vulnerable package); deeper chains get an override.
+- Base-image digests and GitHub Action SHAs need network access (registry / GitHub API); offline they are escalated.
+- The bundled `fixture_*` snapshots are demo data for air-gapped runs; live OSV and registries are authoritative.

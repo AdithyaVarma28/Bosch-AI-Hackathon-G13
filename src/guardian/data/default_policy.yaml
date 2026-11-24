@@ -1,0 +1,91 @@
+# Guardian default policy (policy-as-code). Evaluated deterministically; the effective policy's sha256 is
+# recorded in every Day 2 report so a verdict can be reproduced.
+#
+# A repository may add `guardian-policy.yaml` at its root (or pass --policy) to add rules, add blocked packages
+# or change the severity of non-floor rules. Floor rules (floor: true) cannot be removed or weakened.
+#
+# Rule types:
+#   max_findings        at most `max` open findings matching `match` (or any of `match_any`)
+#   blocked_packages    no component listed under blocked_packages
+#   resolved_versions   every component in `scope` has a concrete resolved version
+#   approval_hash_match the applied change set equals an approved plan hash
+#   target_resolved     the plan's target findings are gone in the rescan
+#   no_new_findings     the fix introduces no new finding in `bands`
+#   tests_not_regressed no test that passed before the fix fails after it
+#   build_passes        the sandbox build succeeded
+#   risk_acceptance_valid every accepted risk has a reason, a reviewer and an unexpired expiry date
+version: 1
+blocked_packages: []
+rules:
+  - id: no-critical-in-prod
+    severity: block
+    description: No open Critical vulnerability in runtime scope
+    type: max_findings
+    match: {cls: vuln, severity_band: [Critical], scope: [prod, unknown, null]}
+    max: 0
+  - id: no-kev
+    severity: block
+    description: No open finding listed in CISA KEV, any scope
+    type: max_findings
+    match: {cls: vuln, kev: true}
+    max: 0
+  - id: no-malicious
+    severity: block
+    description: No component with a malicious-package advisory or a likely-malicious investigation verdict
+    type: max_findings
+    match_any:
+      - {attack_class: Known malicious package}
+      - {investigation_verdict: likely_malicious}
+    max: 0
+  - id: no-blocked-packages
+    severity: block
+    description: No component on the blocked list
+    type: blocked_packages
+  - id: resolved-prod-deps
+    severity: warn
+    description: Every prod dependency has a concrete resolved version
+    type: resolved_versions
+    scope: [prod]
+  - id: pinned-base-images
+    severity: warn
+    description: Container base images pinned by digest
+    type: max_findings
+    match: {rule: [DF001, DF002, DC001]}
+    max: 0
+  - id: pinned-ci-actions
+    severity: warn
+    description: Third-party CI actions pinned by commit SHA
+    type: max_findings
+    match: {rule: [CI001], first_party: false}
+    max: 0
+  - id: approved-changes-only
+    severity: block
+    floor: true
+    description: The applied diff hash equals an approved plan hash
+    type: approval_hash_match
+  - id: target-resolved
+    severity: block
+    floor: true
+    description: The fix resolves the findings it targets (proven by rescan)
+    type: target_resolved
+  - id: no-new-high
+    severity: block
+    floor: true
+    description: The fix introduces no new P0/P1 finding
+    type: no_new_findings
+    bands: [P0, P1]
+  - id: build-passes
+    severity: block
+    floor: true
+    description: The patched application builds in the sandbox
+    type: build_passes
+  - id: tests-not-regressed
+    severity: block
+    floor: true
+    description: No test that passed before the fix fails after it
+    type: tests_not_regressed
+  - id: risk-acceptance-expiry
+    severity: block
+    floor: true
+    description: Every accepted risk has a reason, an owner and an unexpired expiry date
+    type: risk_acceptance_valid

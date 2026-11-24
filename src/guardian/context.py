@@ -19,6 +19,17 @@ class Settings:
     cache_dir: Path = Path(".guardian_cache")
     max_explanations: int = 10     # Evidence Agent budget per run (top findings by band)
     llm_model: str | None = None
+    # ---- Day 2
+    remediate: bool = False                # continue the same pipeline into Day 2 (S10-S16) after detection
+    remediate_only: list[str] | None = None  # restrict Day 2 to these plan keys / finding ids
+    advisory_db: Path | None = None        # offline OSV snapshot (JSON list of OSV records) instead of api.osv.dev
+    registry_snapshot: Path | None = None  # offline registry snapshot (versions, dependencies) for remediation
+    sandbox: str = "docker"                # docker | local (opt-in, runs repo code on this machine) | none
+    policy_path: Path | None = None        # extra policy file (merged over the defaults; floor rules stay on)
+    max_queue: int = 5                     # findings/packages remediated per run (top of the Fix-now bucket)
+    max_finalists: int = 3                 # tournament round 2 size
+    max_corrections: int = 2               # self-correction rounds per plan
+    sandbox_timeout: int = 900             # seconds per sandbox step
 
 
 @dataclass

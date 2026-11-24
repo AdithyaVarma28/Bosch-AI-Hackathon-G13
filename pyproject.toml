@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "guardian"
 version = "0.1.0"
-description = "Software Supply Chain Guardian: agentic supply-chain visibility and detection (Day 1)"
+description = "Software Supply Chain Guardian: agentic supply-chain visibility, detection (Day 1) and verified remediation (Day 2)"
 requires-python = ">=3.11"
 dependencies = [
   "pydantic>=2.6",
@@ -31,7 +31,7 @@ guardian = "guardian.cli:app"
 where = ["src"]
 
 [tool.setuptools.package-data]
-guardian = ["data/*.yaml", "data/*.txt"]
+guardian = ["data/*.yaml", "data/*.txt", "data/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

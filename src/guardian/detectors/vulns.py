@@ -9,12 +9,12 @@ from ..context import RunContext
 from ..httpcache import CacheMiss, CachedHttp
 from ..models import Finding
 from ..purl import ECOSYSTEMS, package_key
-from .osv import OsvClient, cve_aliases, fixed_versions, load_epss, load_kev, severity_band
+from .osv import OsvClient, cve_aliases, fixed_versions, load_epss, load_kev, make_osv, severity_band  # noqa: F401 (OsvClient patched by chaos)
 
 
 def detect_vulns(ctx: RunContext, http: CachedHttp | None = None) -> list[Finding]:
     http = http or CachedHttp(ctx.settings.cache_dir, offline=ctx.settings.offline)
-    osv = OsvClient(http)
+    osv = make_osv(ctx.settings, http) if getattr(ctx.settings, "advisory_db", None) else OsvClient(http)
     targets = [c for c in ctx.components if c.version and c.ecosystem in ECOSYSTEMS]
     findings: list[Finding] = []
     try:

@@ -7,6 +7,7 @@ import threading
 import time
 import uuid
 from pathlib import Path
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
@@ -20,6 +21,40 @@ class RunRequest(BaseModel):
     repo_url: str
     offline: bool = False
     use_llm: bool = True
+    remediate: bool = True             # one pipeline: detection -> Day 2 up to the approval gate
+    sandbox: str = "docker"
+    fixture_snapshots: bool = False
+
+
+class RemediateRequest(BaseModel):
+    sandbox: str = "docker"
+    offline: bool = False
+    use_llm: bool = True
+    only: list[str] = []
+    replan: bool = False
+    max_queue: int = 5
+    fixture_snapshots: bool = False
+
+
+class DecisionRequest(BaseModel):
+    plan: str
+    decision: Literal["approve", "reject", "accept_risk"]
+    reviewer: str
+    plan_hash: str
+    reason: str = ""
+    candidate: list[str] = []
+    expires: str | None = None
+
+
+class PatchRequest(BaseModel):
+    plan: str
+    reviewer: str
+    reason: str = ""
+
+
+def _fixture(name: str) -> Path:
+    from importlib import resources
+    return Path(str(resources.files("guardian.data").joinpath(name)))
 
 
 def create_app(out_dir: Path = Path("output")) -> FastAPI:
@@ -30,10 +65,12 @@ def create_app(out_dir: Path = Path("output")) -> FastAPI:
         from .orchestrator import run_pipeline
         st = runs[run_id]
         try:
-            res = run_pipeline(req.repo_url, out_dir, Settings(offline=req.offline, use_llm=req.use_llm),
-                               emit=lambda e: st["events"].append(e), run_id=run_id)
+            s = Settings(offline=req.offline, use_llm=req.use_llm, remediate=req.remediate, sandbox=req.sandbox,
+                         advisory_db=_fixture("fixture_advisories.json") if req.fixture_snapshots else None,
+                         registry_snapshot=_fixture("fixture_registry.json") if req.fixture_snapshots else None)
+            res = run_pipeline(req.repo_url, out_dir, s, emit=lambda e: st["events"].append(e), run_id=run_id)
             st.update(status="done", run_dir=str(res.run_dir), report=str(res.report_path) if res.report_path else None,
-                      node_status=res.node_status)
+                      node_status=res.node_status, day2=res.day2.status if res.day2 else None)
         except Exception as e:  # never crash the server
             st.update(status="failed", error=f"{type(e).__name__}: {e}")
 
@@ -112,6 +149,72 @@ def create_app(out_dir: Path = Path("output")) -> FastAPI:
     @app.get("/runs/{run_id}/code-index")
     def code_index(run_id: str):
         return _json(run_id, "code_index.json")
+
+    # ------------------------------------------------------------------- Day 2
+    def _d2(run_id: str, req: "RemediateRequest") -> None:
+        from .day2.pipeline import run_day2
+        st = runs.setdefault(run_id, {"status": "done", "events": []})
+        st["day2"] = "running"
+        try:
+            s = Settings(offline=req.offline, use_llm=req.use_llm, sandbox=req.sandbox, max_queue=req.max_queue,
+                         advisory_db=_fixture("fixture_advisories.json") if req.fixture_snapshots else None,
+                         registry_snapshot=_fixture("fixture_registry.json") if req.fixture_snapshots else None)
+            res = run_day2(_dir(run_id), s, only=req.only or None, replan=req.replan,
+                           emit=lambda e: st["events"].append({**e, "phase": "day2"}))
+            st["day2"] = res.status
+        except Exception as e:
+            st["day2"] = f"failed: {type(e).__name__}: {e}"
+
+    @app.post("/runs/{run_id}/remediate", status_code=202)
+    def remediate(run_id: str, req: RemediateRequest):
+        _dir(run_id)
+        if (runs.get(run_id) or {}).get("day2") == "running":
+            raise HTTPException(409, "Day 2 already running for this run")
+        threading.Thread(target=_d2, args=(run_id, req), daemon=True).start()
+        return {"run_id": run_id, "day2": "running"}
+
+    @app.get("/runs/{run_id}/remediation")
+    def remediation(run_id: str):
+        return _json(run_id, "day2/report.json")
+
+    @app.get("/runs/{run_id}/day2/remediation.html", response_class=HTMLResponse)   # iframe path inside report.html
+    @app.get("/runs/{run_id}/remediation.html", response_class=HTMLResponse)
+    def remediation_html(run_id: str):
+        p = _dir(run_id) / "day2" / "remediation.html"
+        if not p.exists():
+            raise HTTPException(404, "Day 2 report not available")
+        return FileResponse(p)
+
+    @app.get("/runs/{run_id}/plans")
+    def list_plans(run_id: str):
+        from .day2.decisions import open_d2
+        st, d2 = open_d2(_dir(run_id))
+        try:
+            return [p.model_dump(exclude={"candidates": {"__all__": {"diff"}}}) for p in d2.plans()]
+        finally:
+            st.close()
+
+    @app.post("/runs/{run_id}/decisions")
+    def decision(run_id: str, req: DecisionRequest):
+        from .day2.decisions import PlanNotFound, record
+        try:
+            p = record(_dir(run_id), req.plan, req.decision, req.reviewer, req.plan_hash, req.reason, req.candidate or None, req.expires)
+        except PlanNotFound as e:
+            raise HTTPException(404, str(e))
+        except (ValueError, PermissionError) as e:
+            raise HTTPException(409, str(e))
+        return {"plan_key": p.plan_key, "revision": p.revision, "plan_hash": p.plan_hash, "status": p.status}
+
+    @app.post("/runs/{run_id}/patches")
+    def patch(run_id: str, req: PatchRequest):
+        from .day2.decisions import PlanNotFound, export_patch
+        try:
+            path = export_patch(_dir(run_id), req.plan, req.reviewer, req.reason)
+        except PlanNotFound as e:
+            raise HTTPException(404, str(e))
+        except ValueError as e:
+            raise HTTPException(409, str(e))
+        return {"patch": path.read_text(encoding="utf-8")}
 
     @app.get("/runs/{run_id}/evidence/{evidence_id}")
     def evidence(run_id: str, evidence_id: str):

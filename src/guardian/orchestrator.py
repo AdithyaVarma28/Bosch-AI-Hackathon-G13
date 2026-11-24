@@ -3,6 +3,8 @@
 ingest -> cartographer -> [resolver_sbom || code_index] -> graph -> dossier_agent -> supervisor
        -> [vuln_intel || change_anomaly || package_signals || container_ci || secrets || discrepancies]
        -> correlator -> evidence_agent -> report
+       [Settings.remediate] -> day2_start -> prioritize -> investigate -> remediation_plan -> approval_gate
+       -> [approved] validate -> verify -> remediation_report      (Day 2, guardian.day2; stops at the gate otherwise)
 
 * Supervisor routing is a deterministic table with recorded reasons (no LLM needed to decide what runs).
 * LLM agents: Dossier agent and Evidence Agent (Groq), both bounded and Verifier-checked, both with rule fallbacks.
@@ -57,6 +59,10 @@ class PipelineState(TypedDict, total=False):
     plan: dict[str, Any]
     errors: Annotated[list[str], operator.add]
     report_path: str
+    # Day 2 (same graph when Settings.remediate is on)
+    d2_key: str
+    approved: list[str]
+    d2_status: str
 
 
 @dataclass
@@ -66,6 +72,7 @@ class PipelineResult:
     report_path: Path | None
     node_status: dict[str, str]
     events: list[dict] = field(default_factory=list)
+    day2: Any = None               # guardian.day2.pipeline.Day2Result when Day 2 ran in the same pipeline
 
 
 def _node(name: str, fn: Callable[[RunContext, PipelineState], dict | None], degrade_only: bool = True):
@@ -253,6 +260,14 @@ def s_report(ctx: RunContext, state) -> dict:
     return {"report_path": str(path), "_message": str(path)}
 
 
+def s_day2_start(ctx: RunContext, state) -> dict:
+    """Hand-over from detection (Day 1) to remediation (Day 2) inside the same graph."""
+    from .day2.pipeline import start_day2
+    key = start_day2(ctx, ctx.settings.remediate_only, emit=ctx.emit, key=f"{state['run_id']}:d2")
+    return {"d2_key": key, "_message": f"policy loaded; sandbox {ctx.settings.sandbox}; "
+                                      f"advisories {'snapshot' if ctx.settings.advisory_db else 'OSV'}"}
+
+
 # ----------------------------------------------------------------------------- graph
 def build_app(settings: Settings, out_dir: Path, emit: Callable[[dict], None] = lambda e: None):
     g = StateGraph(PipelineState)
@@ -285,7 +300,17 @@ def build_app(settings: Settings, out_dir: Path, emit: Callable[[dict], None] = 
     g.add_edge(DETECTORS, "correlator")                                    # join
     g.add_edge("correlator", "evidence_agent")
     g.add_edge("evidence_agent", "report")
-    g.add_edge("report", END)
+    if settings.remediate:
+        # Day 2 continues in the same graph: report -> day2_start -> prioritize -> investigate -> remediation_plan
+        # -> approval_gate -> [validate -> verify] -> remediation_report. It stops at the approval gate until a
+        # reviewer approves a plan hash; `guardian remediate <run_dir>` resumes with the same nodes.
+        from .day2.pipeline import add_day2_nodes
+        g.add_node("day2_start", _node("day2_start", s_day2_start))
+        g.add_conditional_edges("report", lambda s: "day2_start" if s["node_status"].get("report") == "ok" else END,
+                                ["day2_start", END])
+        add_day2_nodes(g, "day2_start", END)
+    else:
+        g.add_edge("report", END)
     return g.compile(checkpointer=MemorySaver())
 
 
@@ -295,8 +320,13 @@ def run_pipeline(target: str, out_dir: Path = Path("output"), settings: Settings
     out_dir = Path(out_dir)
     run_id = run_id or time.strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:6]
     app = build_app(settings, out_dir, emit)
-    final = app.invoke({"run_id": run_id, "target": target, "node_status": {}, "events": [], "errors": []},
-                       config={"configurable": {"thread_id": run_id}, "recursion_limit": 60})
+    try:
+        final = app.invoke({"run_id": run_id, "target": target, "node_status": {}, "events": [], "errors": []},
+                           config={"configurable": {"thread_id": run_id}, "recursion_limit": 80})
+    finally:
+        if settings.remediate:
+            from .day2.pipeline import D2RUNS
+            D2RUNS.pop(f"{run_id}:d2", None)
     ctx = RUNS.get(run_id)
     rp = final.get("report_path")
     if ctx is None:  # ingest failed: write a failure report so the caller always gets one
@@ -306,6 +336,10 @@ def run_pipeline(target: str, out_dir: Path = Path("output"), settings: Settings
         rp = fail_dir / "report.json"
         rp.write_text(json.dumps({"schema_version": "1.0", "status": "failed", "target": target,
                                   "node_status": final.get("node_status"), "errors": final.get("errors")}, indent=2), encoding="utf-8")
+    day2 = None
+    if ctx is not None and final.get("d2_key"):
+        from .day2.pipeline import day2_result
+        day2 = day2_result(ctx.store.run_dir, ctx.store, final.get("d2_status", "done"), final.get("node_status", {}))
     return PipelineResult(run_id=run_id, run_dir=ctx.store.run_dir if ctx else Path(rp).parent,
                           report_path=Path(rp) if rp else None, node_status=final.get("node_status", {}),
-                          events=final.get("events", []))
+                          events=final.get("events", []), day2=day2)

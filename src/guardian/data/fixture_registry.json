@@ -1,0 +1,28 @@
+{
+  "_comment": "Offline registry snapshot for the guardian-fixture demo. Version lists and dependency ranges mirror the public registries closely enough for remediation planning; integrity values are omitted (unknown offline), so lockfile edits record no integrity and npm must fill it in on regeneration. Live registries are authoritative.",
+  "npm": {
+    "minimist": {"created": "2013-06-25T00:00:00Z", "maintainers": ["ljharb"], "versions": {
+      "0.0.8": {"dependencies": {}}, "0.0.10": {"dependencies": {}}, "0.1.0": {"dependencies": {}},
+      "0.2.0": {"dependencies": {}}, "0.2.1": {"dependencies": {}}, "0.2.3": {"dependencies": {}}, "0.2.4": {"dependencies": {}},
+      "1.0.0": {"dependencies": {}}, "1.1.3": {"dependencies": {}}, "1.2.0": {"dependencies": {}}, "1.2.5": {"dependencies": {}},
+      "1.2.6": {"dependencies": {}}, "1.2.7": {"dependencies": {}}, "1.2.8": {"dependencies": {}}}},
+    "mkdirp": {"created": "2010-12-20T00:00:00Z", "maintainers": ["isaacs"], "versions": {
+      "0.5.1": {"dependencies": {"minimist": "0.0.8"}},
+      "0.5.5": {"dependencies": {"minimist": "^1.2.5"}},
+      "0.5.6": {"dependencies": {"minimist": "^1.2.6"}},
+      "1.0.4": {"dependencies": {}},
+      "3.0.1": {"dependencies": {}}}},
+    "lodash": {"created": "2012-04-23T00:00:00Z", "maintainers": ["jdalton"], "versions": {
+      "4.17.20": {"dependencies": {}, "repository": "https://github.com/lodash/lodash"},
+      "4.17.21": {"dependencies": {}, "repository": "https://github.com/lodash/lodash"}}},
+    "debug": {"created": "2011-11-29T00:00:00Z", "versions": {
+      "2.6.9": {"dependencies": {"ms": "2.0.0"}}, "4.3.4": {"dependencies": {"ms": "2.1.2"}}, "4.3.7": {"dependencies": {"ms": "^2.1.3"}}}},
+    "ms": {"created": "2011-12-21T00:00:00Z", "versions": {
+      "2.0.0": {"dependencies": {}}, "2.1.2": {"dependencies": {}}, "2.1.3": {"dependencies": {}}}}
+  },
+  "pypi": {
+    "flask": {"versions": {"2.0.1": {}, "2.0.3": {}, "2.1.3": {}, "2.2.5": {}, "2.3.2": {}, "2.3.3": {}, "3.0.3": {}}},
+    "requests": {"versions": {"2.25.1": {}, "2.28.2": {}, "2.31.0": {}, "2.32.0": {"yanked": true}, "2.32.2": {}, "2.32.3": {}}},
+    "pyyaml": {"versions": {"5.3.1": {}, "5.4": {}, "5.4.1": {}, "6.0.1": {}, "6.0.2": {}}}
+  }
+}

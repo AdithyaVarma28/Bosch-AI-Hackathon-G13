@@ -37,6 +37,91 @@ class OsvClient:
         data, _ = self.http.request_json("GET", f"{OSV}/vulns/{vid}")
         return data
 
+    def query_versions(self, ecosystem: str, name: str, versions: list[str]) -> dict[str, list[str]]:
+        """version -> [vuln ids] for candidate versions of one package (used by Day 2 remediation)."""
+        from ..purl import make_purl
+        purls = {make_purl(ecosystem, name, v): v for v in versions}
+        hits, _ = self.query_batch(list(purls))
+        return {purls[p]: ids for p, ids in hits.items()}
+
+
+class LocalOsvClient:
+    """Offline advisory snapshot: a JSON list of OSV records (same schema as api.osv.dev).
+
+    Used for air-gapped demos and tests (`Settings.advisory_db`). Matching follows OSV semantics:
+    explicit `versions` lists, or ECOSYSTEM/SEMVER `ranges` with introduced/fixed/last_affected events."""
+
+    def __init__(self, path):
+        import json
+        from pathlib import Path
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        self.records: dict[str, dict] = {r["id"]: r for r in (data.get("vulns", data) if isinstance(data, dict) else data)}
+
+    def matches(self, ecosystem: str, name: str, version: str) -> list[str]:
+        return [vid for vid, r in self.records.items() if affected_by(r, ecosystem, name, version)]
+
+    def query_batch(self, purls: list[str]) -> tuple[dict[str, list[str]], str]:
+        from ..purl import parse_purl
+        out = {}
+        for p in purls:
+            try:
+                eco, name, ver = parse_purl(p)
+            except ValueError:
+                continue
+            if ver:
+                ids = self.matches(eco, name, ver)
+                if ids:
+                    out[p] = ids
+        return out, "snapshot"
+
+    def get_vuln(self, vid: str) -> dict | None:
+        return self.records.get(vid)
+
+    def query_versions(self, ecosystem: str, name: str, versions: list[str]) -> dict[str, list[str]]:
+        return {v: ids for v in versions if (ids := self.matches(ecosystem, name, v))}
+
+
+def affected_by(record: dict, ecosystem: str, name: str, version: str) -> bool:
+    from ..day2.versions import compare
+    eco = OSV_ECOSYSTEM.get(ecosystem, ecosystem)
+    norm = name.lower().replace("_", "-")
+    for aff in record.get("affected") or []:
+        pkg = aff.get("package") or {}
+        if pkg.get("ecosystem") != eco or pkg.get("name", "").lower().replace("_", "-") != norm:
+            continue
+        if version in (aff.get("versions") or []):
+            return True
+        for rng in aff.get("ranges") or []:
+            if rng.get("type") not in ("ECOSYSTEM", "SEMVER"):
+                continue
+            affected = False
+            events = sorted(rng.get("events") or [], key=lambda e: 0 if "introduced" in e else 1)
+            intro = [e["introduced"] for e in events if "introduced" in e]
+            fixed = [e["fixed"] for e in events if "fixed" in e]
+            last = [e["last_affected"] for e in events if "last_affected" in e]
+            for i in intro:
+                lo_ok = i == "0" or compare(ecosystem, version, i) >= 0
+                if not lo_ok:
+                    continue
+                ups = [f for f in fixed if i == "0" or compare(ecosystem, f, i) > 0]
+                lasts = [x for x in last if i == "0" or compare(ecosystem, x, i) >= 0]
+                if ups:
+                    up = min(ups, key=_vkey)
+                    affected = compare(ecosystem, version, up) < 0
+                elif lasts:
+                    affected = compare(ecosystem, version, min(lasts, key=_vkey)) <= 0
+                else:
+                    affected = True
+                if affected:
+                    return True
+    return False
+
+
+def make_osv(settings, http: CachedHttp):
+    """The advisory source for a run: the offline snapshot when configured, else OSV."""
+    path = getattr(settings, "advisory_db", None)
+    return LocalOsvClient(path) if path else OsvClient(http)
+
 
 # ----------------------------------------------------------------------------- CVSS v3.x base score
 _W = {
