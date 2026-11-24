@@ -26,7 +26,11 @@ LABELS = {"patch_applies": "Patch applies", "scope_ok": "Only allowed files", "c
           "runtime_compatible": "Python version compatible", "lockfile_consistent": "Lockfile matches manifest",
           "security_check": "Security check on the patched files", "ai_critic": "Independent AI review",
           "build": "Build", "tests": "Tests (no regressions)", "rescan_resolved": "Rescan: finding resolved",
-          "no_new_vulns": "Rescan: nothing new introduced"}
+          "no_new_vulns": "Rescan: nothing new introduced", "install": "Dependencies install",
+          "deps_compatible": "Installed set is consistent (pip check)", "proof_of_fix": "Proof-of-fix probe",
+          "security_tests": "Guardian security tests (before → after)", "target_install": "Installs on the target Python", "target_boot": "Starts on the target Python"}
+SANDBOX_CHECKS = ("build", "install", "deps_compatible", "tests", "proof_of_fix", "security_tests", "target_install", "target_boot",
+                  "rescan_resolved", "no_new_vulns")
 
 UNSAFE_CALLS = [re.compile(r"yaml\.load\((?![^)]*SafeLoader)"), re.compile(r"yaml\.unsafe_load\("),
                 re.compile(r"shell\s*=\s*True")]
@@ -48,6 +52,7 @@ def proposal_from_candidate(unit: dict, cand: dict, author: str = "template", fe
             "compatibility": cand.get("compatibility") or [], "notes": cand.get("notes") or [],
             "rollback": cand.get("rollback"), "alternatives_rejected": [], "evidence_ids": [],
             "candidate_checks": cand.get("checks") or {}, "feedback": feedback, "created_at": now(),
+            **({"bumps": cand["bumps"]} if cand.get("bumps") else {}),
             "_current_version": (re.match(r"pkg:pypi/[^@]+@(.+)$", unit.get("target") or "") or [None, None])[1]}
 
 
@@ -61,6 +66,20 @@ def _security_check(unit: dict, p: dict, files: dict) -> dict:
     kind, name = p.get("kind"), _pkg_name(unit)
     from .candidates import RepoFiles
     name_rx = re.compile(rf"^\s*{RepoFiles.name_re(name)}\s*(==|>=|~=|\[|$)", re.I | re.M) if name else None
+    if kind == "parameterize_sql":
+        from .codefix import sites_in_source
+        fn = (unit.get("target") or "").rpartition("::")[2]
+        left = [f"{k}:{s['line']}" for k, t in after.items() if k.endswith(".py")
+                for s in sites_in_source(t, k) if str(s["function"]) == fn]
+        return {"status": "fail" if left else "pass",
+                "detail": f"SQL still built by string formatting at {left}" if left else f"{fn}() now passes values as query parameters"}
+    if kind == "compat_upgrade":
+        miss = [f"{b['package']} {b['to']}" for b in p.get("bumps") or []
+                if not any(re.search(rf"^\s*{RepoFiles.name_re(b['package'])}\s*==\s*{re.escape(b['to'])}\s*$", t, re.I | re.M)
+                           for t in after.values())]
+        return {"status": "fail" if miss or not p.get("bumps") else "pass",
+                "detail": f"not pinned after the patch: {', '.join(miss)}" if miss else
+                "manifest now pins " + ", ".join(f"{b['package']}=={b['to']}" for b in p.get("bumps") or [])}
     if kind in ("upgrade", "pin_back") and name:
         tv = p.get("target_version")
         pins = [m.group(1) for t in after.values() for m in re.finditer(rf"^\s*{RepoFiles.name_re(name)}\s*(?:==|>=)\s*([^\s;#]+)", t, re.I | re.M)]
@@ -166,7 +185,7 @@ def fix_confidence(p: dict, validation: Optional[dict] = None) -> tuple[str, lis
     if c.get("ai_critic", {}).get("status") == "fail":
         fails.append("independent AI review says the patch does not remove the issue")
     v = validation or {}
-    vfail = [LABELS[k] for k in ("build", "tests", "rescan_resolved", "no_new_vulns") if (v.get("checks") or {}).get(k, {}).get("status") == "fail"]
+    vfail = [LABELS[k] for k in SANDBOX_CHECKS if k != "proof_of_fix" and (v.get("checks") or {}).get(k, {}).get("status") == "fail"]
     if fails or vfail:
         return "low", [f"failed: {x}" for x in fails + vfail]
     unknown = [LABELS[k] for k in STATIC if c.get(k, {}).get("status") == "unknown"]
@@ -180,9 +199,23 @@ def fix_confidence(p: dict, validation: Optional[dict] = None) -> tuple[str, lis
         pass
     sec_ok = c.get("security_check", {}).get("status") == "pass"
     reasons = []
+    vc = v.get("checks") or {}
+    tests_ran = vc.get("tests", {}).get("status") == "pass" and ((v.get("tests") or {}).get("after") or {}).get("passed", 0) > 0
+    probe_ok = vc.get("proof_of_fix", {}).get("status") == "pass"
+    st_rows = [r for r in (v.get("security_tests") or {}).get("tests") or [] if r.get("kept") and r.get("as_expected")]
+    t1_ok = any(r["kind"] == "T1" for r in st_rows)
+    t3_ok = any(r["kind"] == "T3" for r in st_rows)
+    target_ok = vc.get("target_install", {}).get("status") == "pass" and vc.get("target_boot", {}).get("status") in (None, "pass")
     if sec_ok and validated and c.get("ai_critic", {}).get("status") != "fail":
-        reasons.append("all static checks pass, the security check passes, and sandbox build + tests + rescan passed")
-        return "high", reasons
+        executed = [x for x, ok in (("the project's own tests pass after the patch", tests_ran),
+                                    ("a proof-of-fix probe showed the vulnerable behaviour gone", probe_ok or t1_ok),
+                                    ("Guardian's feature test exercised the app on the new version", t3_ok),
+                                    ("the app really installs and starts on the target Python", target_ok)) if ok]
+        if executed:
+            return "high", ["static checks pass, the security check passes, the sandbox rescan resolved the finding, and "
+                            + " and ".join(executed)]
+        reasons.append("the sandbox passed, but nothing executed the changed code: no test ran and no proof-of-fix "
+                       "probe reproduced the bug, so the rescan's version-range lookup is the only evidence")
     if sec_ok and critic_yes and p.get("kind") in ("upgrade", "pin_back") and same_major and not unknown:
         return "high", ["static checks pass, the AI critic agrees, same-major version change"]
     if unknown:

@@ -1,7 +1,7 @@
 ---
 name: replace-unsafe-api
 description: Replace a call to a vulnerable or dangerous API in the application code with its safe equivalent at the exact call sites (for example yaml.load with FullLoader → yaml.safe_load), when upgrading is not wanted or not enough.
-allowed_files: *.py
+allowed_files: *.py, tests/guardian/*
 ---
 # Replace an unsafe API call
 

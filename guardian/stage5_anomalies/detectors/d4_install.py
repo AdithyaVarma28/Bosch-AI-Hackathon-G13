@@ -43,6 +43,8 @@ def detect(ctx: Stage5Context, flagged: set[str]) -> list[Signal]:
             base = rel.rsplit("/", 1)[-1]
             if base not in HOOK_FILES:
                 continue
+            if base == "conftest.py" and set(rel.lower().split("/")[:-1]) & {"tests", "test", "testing"}:
+                continue        # a test-suite conftest only runs under pytest, never on install
             found = [f for f in findings if f["category"] in LABEL]
             if not found:
                 continue

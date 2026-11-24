@@ -23,6 +23,11 @@ class Decision(BaseModel):
     large: bool = False
 
 
+class Bulk(BaseModel):
+    reviewer: Optional[str] = None
+    build: bool = True
+
+
 class Suggestion(BaseModel):
     feedback: str
     reviewer: Optional[str] = None
@@ -103,3 +108,139 @@ def attach(app, scan_dir: Callable[[str], Path]) -> None:
     @app.get("/api/scans/{scan_id}/audit")
     def audit_log(scan_id: str):
         return read_audit(scan_dir(scan_id))
+
+
+def attach_finish(app, scan_dir: Callable[[str], Path]) -> None:
+    """Routes of docs/DAY_2_COMPLETION_PLAN.md section 9: auto-validate queue, fixed repository, report."""
+    from fastapi import HTTPException
+    from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
+
+    from . import fixed_repo, report
+    from .queue import AutoValidator, eligible
+
+    @app.get("/api/scans/{scan_id}/queue")
+    def queue_state(scan_id: str):
+        d = scan_dir(scan_id)
+        q = AutoValidator.for_dir(d)
+        if (d / "remediations.json").exists():
+            q.ensure()
+        st = q.state()
+        st["build_health"] = read_json(d / "build_health.json")
+        return st
+
+    @app.post("/api/scans/{scan_id}/remediations/validate-all")
+    def validate_all(scan_id: str):
+        d = scan_dir(scan_id)
+        q = AutoValidator.for_dir(d)
+        q.started = True
+        n = q.enqueue([u["rid"] for u in sorted(load_remediations(d), key=lambda u: min(u.get("ranks") or [0])) if eligible(u, True)])
+        return {"queued": n, **q.state()}
+
+    @app.post("/api/scans/{scan_id}/build-health")
+    def build_health(scan_id: str):
+        from .candidates import add_build_health
+        return add_build_health(scan_dir(scan_id), force=True)
+
+    @app.get("/api/scans/{scan_id}/fixed-repo")
+    def fixed_get(scan_id: str):
+        return fixed_repo.state(scan_dir(scan_id))
+
+    @app.post("/api/scans/{scan_id}/fixed-repo")
+    def fixed_build(scan_id: str):
+        d = scan_dir(scan_id)
+        if not fixed_repo.selection(d)[0]:
+            raise HTTPException(422, "no approved fix yet: approve at least one tested patch on the Remediation page")
+        fixed_repo.stop_live(d)
+        started = fixed_repo.Jobs.start(d)
+        return {"started": started, **fixed_repo.state(d)}
+
+    @app.get("/api/scans/{scan_id}/fixed-repo/download")
+    def fixed_download(scan_id: str, what: str = "zip"):
+        d = fixed_repo.fixed_dir(scan_dir(scan_id))
+        f = {"zip": d / "fixed-repo.zip", "patch": d / "fixes.patch"}.get(what)
+        if f is None or not f.exists():
+            raise HTTPException(404, "not built yet")
+        return FileResponse(f, filename=f"{scan_id}-{f.name}",
+                            media_type="application/zip" if what == "zip" else "text/x-diff")
+
+    @app.post("/api/scans/{scan_id}/fixed-repo/run")
+    def fixed_run(scan_id: str, which: str = "after"):
+        try:
+            return fixed_repo.run_live(scan_dir(scan_id), "before" if which == "before" else "after")
+        except RuntimeError as exc:
+            raise HTTPException(422, str(exc))
+
+    @app.delete("/api/scans/{scan_id}/fixed-repo/run")
+    def fixed_stop(scan_id: str, which: str = "both"):
+        fixed_repo.stop_live(scan_dir(scan_id), which)
+        return {"stopped": True}
+
+    @app.get("/api/scans/{scan_id}/remediation-report")
+    def report_get(scan_id: str):
+        return report.build(scan_dir(scan_id))
+
+    @app.get("/api/scans/{scan_id}/remediation-report/download")
+    def report_download(scan_id: str, format: str = "html"):
+        rep = report.build(scan_dir(scan_id))
+        name = f"{scan_id}-guardian-report"
+        if format == "md":
+            return PlainTextResponse(report.to_md(rep), media_type="text/markdown",
+                                     headers={"Content-Disposition": f"attachment; filename={name}.md"})
+        return HTMLResponse(report.to_html(rep), headers={"Content-Disposition": f"attachment; filename={name}.html"})
+
+
+def bulk_candidates(d: Path) -> list[dict]:
+    """Fixes a reviewer can approve in one go: the current proposal was validated in the sandbox, nothing failed
+    (no new vulnerability, no regression) and Guardian's security tests behaved as expected."""
+    out = []
+    for u in sorted(load_remediations(d), key=lambda u: (min(u.get("ranks") or [0]), u["rid"])):
+        v = u.get("validation") or {}
+        p = (u.get("proposals") or [{}])[u.get("current") or 0] if u.get("proposals") else {}
+        if u.get("status") not in ("awaiting_proposal_review", "awaiting_patch_review") or u.get("working"):
+            continue
+        if not v.get("finished_at") or v.get("proposal_version") != p.get("version") or v.get("status") not in ("passed", "partial"):
+            continue
+        if (v.get("checks") or {}).get("security_tests", {}).get("status") != "pass":
+            continue
+        out.append({"rid": u["rid"], "label": u["target_label"], "action": p.get("action"), "validation": v.get("status")})
+    return out
+
+
+def attach_bulk(app, scan_dir: Callable[[str], Path]) -> None:
+    import threading
+
+    from . import fixed_repo
+    from .workflow import submit as _submit
+
+    @app.get("/api/scans/{scan_id}/bulk-approve")
+    def bulk_preview(scan_id: str):
+        return {"items": bulk_candidates(scan_dir(scan_id))}
+
+    @app.post("/api/scans/{scan_id}/bulk-approve")
+    def bulk_approve(scan_id: str, body: Bulk):
+        d = scan_dir(scan_id)
+        items = bulk_candidates(d)
+        who = body.reviewer or "reviewer"
+
+        def work():
+            from .common import get_rem
+            for it in items:
+                try:
+                    u = get_rem(d, it["rid"])
+                    if u["status"] == "awaiting_proposal_review":
+                        _submit(d, it["rid"], {"stage": "proposal", "action": "approve", "reviewer": who,
+                                               "source": "approve all validated"}, background=False)
+                    u = get_rem(d, it["rid"])
+                    if u["status"] == "awaiting_patch_review":
+                        part = (u.get("validation") or {}).get("status") != "passed"
+                        _submit(d, it["rid"], {"stage": "patch", "action": "approve", "reviewer": who,
+                                               "reason": "approved in bulk: validated in the sandbox; open '?' checks reviewed" if part else None,
+                                               "source": "approve all validated"}, background=False)
+                except Exception:
+                    continue
+            if body.build and fixed_repo.selection(d)[0]:
+                fixed_repo.stop_live(d)
+                fixed_repo.Jobs.start(d)
+
+        threading.Thread(target=work, daemon=True, name=f"guardian-bulk-{scan_id}").start()
+        return {"approving": items, "build": body.build}

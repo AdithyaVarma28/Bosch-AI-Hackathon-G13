@@ -44,6 +44,7 @@
     for (const a of data.security.anomalies || []) FIND.set(a.id, a);
     for (const h of data.security.hotspots || []) FIND.set(h.id, { ...h, kind: "hotspot", risk: h.level, title: `${h.label} ${h.what.toLowerCase()}` });
     for (const n of data.security.notes || []) FIND.set(n.id, { ...n, kind: "note" });
+    for (const c of data.security.code || []) FIND.set(c.id, c);
     FLOW = new Map((data.flows.routes || []).map(r => [r.id, r]));
   }
   const out = (id, ...types) => (OUT.get(id) || []).filter(e => !types.length || types.includes(e.type));
@@ -76,10 +77,10 @@
       document.querySelector("#repo-kind").textContent = `${data.repo.language || "Python"} repository`;
       document.querySelector("#scan-time").textContent = `${data.repo.commit || ""} · ${data.repo.scannedAt || ""}`;
       document.querySelector("#module-count").textContent = data.modules.length || "";
-      const s = data.security, sec = (s.vulnerabilities?.length || 0) + (s.anomalies?.length || 0);
+      const s = data.security, sec = (s.vulnerabilities?.length || 0) + (s.anomalies?.length || 0) + (s.code?.length || 0);
       document.querySelector("#risk-count").textContent = sec || "";
     }
-    const pages = { overview: renderOverview, architecture: renderArchitecture, risk: renderRisk, security: renderRisk, remediate: renderRemediate, scan: renderNewScan, progress: renderProgress };
+    const pages = { overview: renderOverview, architecture: renderArchitecture, risk: renderRisk, security: renderRisk, remediate: renderRemediate, fixed: renderFixed, report: renderReport, scan: renderNewScan, progress: renderProgress };
     if (!data && !["scan", "progress"].includes(r.view)) { app.innerHTML = emptyState(); bind(); return; }
     app.innerHTML = (data?._stale ? `<div class="banner-warn stale"><b>The Guardian server is running an older version.</b> It was started before the dashboard was updated, so the graph, SBOM details and risk reports are missing. Stop it (Ctrl+C) and start it again: <code>python -m guardian.cli web --root output/scans</code>, then reload this page.</div>` : "") + (pages[r.view] || renderOverview)(r);
     bind(r);
@@ -461,9 +462,9 @@
 
   function renderRisk(r) {
     const tab = r.tab || "vulns", s = data.security;
-    const evCount = (s.vulnerabilities || []).length + (s.anomalies || []).length;
+    const evCount = (s.vulnerabilities || []).length + (s.anomalies || []).length + (s.code || []).length;
     const steps = [["vulns", "3", "Detect vulnerabilities", "Known CVEs from public databases, checked against your code", (s.vulnerabilities || []).length],
-      ["suspicious", "4", "Suspicious report", "Supply-chain anomalies, recent changes and risky code", (s.anomalies || []).length + (s.hotspots || []).length],
+      ["suspicious", "4", "Suspicious report", "Supply-chain anomalies, code vulnerabilities, recent changes and risky code", (s.anomalies || []).length + (s.hotspots || []).length + (s.code || []).length],
       ["evidence", "5", "Evidence report", "Each finding, how it connects, and how it was investigated", evCount]];
     const head = title("RISK DETECTION", "Risks <span class='title-suffix'>& evidence</span>", "What appears risky in this repository, and the evidence behind every finding.");
     const stepper = `<div class="steps">${steps.map(([k, n, l, d, c]) => `<button class="step ${tab === k ? "active" : ""}" data-goto="risk" data-tab="${k}"><span class="step-n">${n}</span><span><b>${l} <small>${c}</small></b><small>${d}</small></span></button>`).join("")}</div>`;
@@ -497,8 +498,11 @@
     const recent = (s.recent || []).filter(c => c.flags.length || c.findings.length).slice(0, 8);
     const commits = recent.map(c => `<div class="commit-row"><div class="commit-top"><code>${esc(c.sha)}</code><b>${esc(short(c.title, 80))}</b><span class="muted-small">${esc(c.date)}${c.author ? " · " + esc(c.author) : ""}</span></div>${c.flags.length ? `<div class="flags">${[...new Map(c.flags.map(f => [f.flag + f.label, f])).values()].slice(0, 8).map(f => f.id ? `<button class="flag ${flagCls(f.flag)}" data-node="${esc(f.id)}">${esc(f.flag)}: ${esc(short(f.label, 40))}</button>` : `<span class="flag ${flagCls(f.flag)}">${esc(f.flag)}: ${esc(short(f.label, 40))}</span>`).join("")}</div>` : ""}${c.findings.length ? `<div class="flags"><span class="muted-small">Findings touching this commit:</span>${c.findings.slice(0, 6).map(id => `<button class="ref-chip danger" data-open="${esc(id)}">${esc(id)}</button>`).join("")}</div>` : ""}</div>`).join("");
     const hot = (s.hotspots || []).map(h => `<button class="list-row" data-open="${esc(h.id)}"><span class="risk-dot ${h.level}"></span><span><b>${esc(h.label)}</b><small>${esc(h.what)} · ${esc(h.file)}:${h.line || ""}${h.public ? " · reachable from a route" : ""}</small></span>${riskTag(h.level)}</button>`).join("");
-    const notes = (s.notes || []).map(n => `<button class="list-row" data-open="${esc(n.id)}"><span class="finding-symbol ${n.severity}">${n.severity === "notable" ? "!" : n.severity === "review" ? "?" : "i"}</span><span><b>${esc(n.title)}</b><small>${esc(n.category)}</small></span></button>`).join("");
-    return `${panel("Supply-chain anomalies", "Behaviour checks that need no database: typosquatted names, install scripts, hash or lockfile changes, untrusted images, risky CI workflows, new outbound destinations", anomalies)}
+    const codeNotes = [...(s.code || [])].sort((a, b) => (RISK[b.risk] ?? -1) - (RISK[a.risk] ?? -1)).map(c => `<button class="list-row" data-open="${esc(c.id)}"><span class="finding-symbol notable">!</span><span><b>SQL injection in ${esc(c.function)}() · ${esc(c.file)}:${esc(c.line)}</b><small>Code vulnerability (CWE-89) · ${esc(c.risk)} · ${esc(short((c.reasons || [])[0] || "", 70))}</small></span>${riskTag(c.risk)}</button>`).join("");
+    const notes = codeNotes + (s.notes || []).map(n => `<button class="list-row" data-open="${esc(n.id)}"><span class="finding-symbol ${n.severity}">${n.severity === "notable" ? "!" : n.severity === "review" ? "?" : "i"}</span><span><b>${esc(n.title)}</b><small>${esc(n.category)}</small></span></button>`).join("");
+    const code = [...(s.code || [])].sort((a, b) => (RISK[b.risk] ?? -1) - (RISK[a.risk] ?? -1)).map(c => `<button class="vt-row at" data-open="${esc(c.id)}"><span class="mono">${esc(c.id)}</span><span><b>${esc(c.function)}()</b><small>${esc(c.file)}:${esc(c.line)}</small></span><span><small class="wrap">${esc(short(c.title, 150))}</small></span><span>${tag(c.cwe || "CWE-89", "orange")}</span><span><small>${esc(short((c.reasons || [])[0] || "", 60))}</small></span><span>${riskTag(c.risk)}</span></button>`).join("");
+    const codePanel = (s.code || []).length ? panel("Code vulnerabilities in your own code", "Found by Guardian's code analysis (it parses the code, no database): SQL queries built by pasting user input into text (CWE-89). Each one has a code fix on the Remediation page.", `<div class="vtable"><div class="vt-head at"><span>ID</span><span>WHERE</span><span>WHAT WAS SEEN</span><span>TYPE</span><span>WHY THIS PRIORITY</span><span>RISK</span></div>${code}</div>`) : "";
+    return `${codePanel}${panel("Supply-chain anomalies", "Behaviour checks that need no database: typosquatted names, install scripts, hash or lockfile changes, untrusted images, risky CI workflows, new outbound destinations", anomalies)}
       <div class="sus-grid">${panel("Recent changes", "Commits that added dependencies, network calls, routes, modules or images, and findings tied to them", `<div class="commit-list">${commits || `<div class="empty-state small">No flagged changes in the scanned history.</div>`}</div>`)}
       <div>${panel("Risky code in this repository", "Calls in your own code that no vulnerability database covers (shell, eval, network, files)", `<div class="list">${hot || `<div class="empty-state small">No risky calls found.</div>`}</div>`)}
       ${panel("Dependency & code observations", "Questions the investigator answered from the code (unused or undeclared packages, new modules, outbound data)", `<div class="list scroll">${notes || `<div class="empty-state small">None.</div>`}</div>`)}</div></div>`;
@@ -506,21 +510,21 @@
 
   function riskEvidence(r) {
     const s = data.security, mode = r.p.get("show") || "attention";
-    const all = [...(s.vulnerabilities || []), ...(s.anomalies || [])].sort((a, b) => sevNum(b) - sevNum(a));
+    const all = [...(s.vulnerabilities || []), ...(s.anomalies || []), ...(s.code || [])].sort((a, b) => sevNum(b) - sevNum(a));
     const rows = mode === "all" ? all : all.filter(attention);
     const connSum = x => { const c = x.connections || [], k = t => c.filter(y => y.kind === t).length; return [k("commit") && `${k("commit")} commit${k("commit") > 1 ? "s" : ""}`, k("anomaly") && `${k("anomaly")} anomal${k("anomaly") > 1 ? "ies" : "y"}`, k("hotspot") && `${k("hotspot")} risky call`, x.siblings && `${x.siblings} more CVEs in package`, x.sites?.length && `${x.sites.length} code site${x.sites.length > 1 ? "s" : ""}`].filter(Boolean).join(" · ") || "—"; };
     const evSum = x => { const c = x.claims || []; return c.length ? `<span class="ev-ok">✓ ${c.filter(y => y.verified).length}/${c.length}</span> verified` : `<span class="muted-small">no claims</span>`; };
     return `<div class="method-strip"><span class="m-step">Each row is one finding from steps 3 and 4. <b>Evidence</b> = claims whose cited lines were re-read from the repository and confirmed. <b>Investigation</b> = the steps the investigator agent took: reading the advisory, querying the knowledge graph, searching and reading code, then an independent verification pass.</span></div>
       <section class="panel"><div class="panel-header"><div><h2>Evidence report</h2><p>${rows.length} finding${rows.length === 1 ? "" : "s"} · click one to see where it was found, what it connects to, and how the evidence was gathered</p></div><div class="filter-chips"><button class="filter-chip ${mode !== "all" ? "active" : ""}" data-ev-show="attention">Needs attention <small>${all.filter(attention).length}</small></button><button class="filter-chip ${mode === "all" ? "active" : ""}" data-ev-show="all">All <small>${all.length}</small></button><button class="quiet-button" id="ev-download">⤓ Report JSON</button></div></div>
       <div class="vtable"><div class="vt-head ev"><span>#</span><span>FINDING</span><span>FOUND IN</span><span>RISK</span><span>CONFIDENCE</span><span>CONNECTED TO</span><span>EVIDENCE</span><span>STEPS</span></div>
-      ${rows.map(x => `<button class="vt-row ev" data-open="${esc(x.id)}"><span class="mono">${esc(x.id)}</span><span><b>${esc(x.kind === "vulnerability" ? `${x.package} ${x.version} · ${x.vulnId}` : (x.componentName || x.component))}</b><small>${esc(short(x.kind === "vulnerability" ? x.explanation : x.capability || x.title, 110))}</small></span><span>${x.kind === "vulnerability" ? tag("Vulnerability report", "blue") : tag("Suspicious report", "amber")}</span><span>${riskTag(x.risk)}</span><span>${x.presence ? `<b>${x.presence.score}%</b> <small>${esc(x.presence.label)}</small>` : `<span class="cap">${esc(x.confidence || "")}</span>`}</span><span><small class="wrap">${esc(connSum(x))}</small></span><span>${evSum(x)}</span><span class="mono">${(x.trace || []).length || "—"}</span></button>`).join("") || `<div class="empty-state">Nothing needs attention. Switch to “All”.</div>`}</div></section>`;
+      ${rows.map(x => `<button class="vt-row ev" data-open="${esc(x.id)}"><span class="mono">${esc(x.id)}</span><span><b>${esc(x.kind === "vulnerability" ? `${x.package} ${x.version} · ${x.vulnId}` : (x.componentName || x.component))}</b><small>${esc(short(x.kind === "vulnerability" ? x.explanation : x.capability || x.title, 110))}</small></span><span>${x.kind === "vulnerability" ? tag("Vulnerability report", "blue") : x.kind === "code" ? tag("Code analysis", "orange") : tag("Suspicious report", "amber")}</span><span>${riskTag(x.risk)}</span><span>${x.presence ? `<b>${x.presence.score}%</b> <small>${esc(x.presence.label)}</small>` : `<span class="cap">${esc(x.confidence || "")}</span>`}</span><span><small class="wrap">${esc(connSum(x))}</small></span><span>${evSum(x)}</span><span class="mono">${(x.trace || []).length || "—"}</span></button>`).join("") || `<div class="empty-state">Nothing needs attention. Switch to “All”.</div>`}</div></section>`;
   }
 
   // ---------- popup windows
   function modalHtml(id, tab) {
     const x = FIND.get(id);
     if (!x) return "";
-    const body = tab === "evidence" && (x.kind === "vulnerability" || x.kind === "anomaly") ? evidenceModal(x) : x.kind === "vulnerability" ? vulnModal(x) : x.kind === "anomaly" ? anomalyModal(x) : x.kind === "hotspot" ? hotspotModal(x) : noteModal(x);
+    const body = tab === "evidence" && (x.kind === "vulnerability" || x.kind === "anomaly") ? evidenceModal(x) : x.kind === "vulnerability" ? vulnModal(x) : x.kind === "anomaly" ? anomalyModal(x) : x.kind === "hotspot" ? hotspotModal(x) : x.kind === "code" ? codeModal(x) : noteModal(x);
     return `<div class="modal-back" id="modal-back"><div class="modal" role="dialog" aria-modal="true"><button class="modal-x" id="modal-x" aria-label="Close">×</button>${body}</div></div>`;
   }
   const msec = (label, body) => body ? `<div class="m-sec"><div class="detail-label">${label}</div>${body}</div>` : "";
@@ -559,6 +563,13 @@
       ${msec("EVIDENCE", `<div class="evidence-list">${(a.evidence || []).map(e => `<span class="evidence-chip"><span>⌖</span>${esc(e.file || "")}${e.lines ? ":" + esc(e.lines) : ""}</span>`).join("")}</div>`)}
       <div class="fix-box"><b>Recommendation</b> ${esc(a.recommendation || "")}</div>
       <div class="finding-actions">${a.function && N.has(a.function) ? link("Show in architecture graph →", `data-node="${esc(a.function)}"`, "primary-button") : N.has(a.component) ? link("Show in graph →", `data-node="${esc(a.component)}"`, "primary-button") : ""}${link("Evidence report →", `data-evidence="${esc(a.id)}"`, "quiet-button")}${mode === "web" ? link("Plan the fix →", `data-remfor="${esc(a.id)}"`, "quiet-button") : ""}</div>`;
+  }
+  function codeModal(c) {
+    return `<div class="m-head"><div class="eyebrow">CODE VULNERABILITY · ${esc(c.id)} · ${esc(c.cwe || "CWE-89")} SQL injection</div><h2>${esc(c.function)}() in ${esc(c.file)}</h2><div class="m-tags">${riskTag(c.risk)}${tag("found by Guardian's code analysis", "orange")}</div></div>
+      ${msec("WHAT WAS SEEN", `<p class="plain">The query is built by pasting values into the SQL text, so an input like <code>' OR '1'='1</code> changes the query itself (e.g. a login without the password).</p>${diffHtml(`--- vulnerable (${c.file}:${c.line})\n+++ fix Guardian proposes (parameterized query)\n-${c.old}\n+${c.new}`)}`)}
+      ${msec("WHY THIS PRIORITY", `<ul class="reason-list">${(c.reasons || []).map(x => `<li>${esc(x)}</li>`).join("")}</ul>`)}
+      ${msec("WHERE", `<p class="plain">${(c.sites || []).map(x => `<code>${esc(x)}</code>`).join(" ")}</p>`)}
+      <div class="finding-actions">${mode === "web" ? link("Plan the fix → (Remediation)", `data-remfor="${esc(c.id)}"`, "primary-button") : ""}</div>`;
   }
   function hotspotModal(h) {
     return `<div class="m-head"><div class="eyebrow">SUSPICIOUS REPORT · ${esc(h.id)} · risky code</div><h2>${esc(h.label)}</h2><div class="m-tags">${riskTag(h.level)}${tag(h.category, "muted")}</div><p class="m-lead">${esc(h.what)}: <code>${esc(h.calls.join(", "))}</code> at ${esc(h.file)}:${esc(h.lines.join(", "))}.</p></div>
@@ -607,13 +618,13 @@
     if (mode !== "web" || !scanId) return;
     if (REM.scan !== scanId) { REM.scan = scanId; REM.list = null; REM.detail.clear(); }
     try {
-      REM.list = await remApi("/remediations");
+      [REM.list, REM.queue, REM.bulk] = await Promise.all([remApi("/remediations"), remApi("/queue").catch(() => null), remApi("/bulk-approve").catch(() => null)]);
       if (rid) REM.detail.set(rid, await remApi(`/remediations/${encodeURIComponent(rid)}`));
       REM.err = null;
     } catch (e) { REM.err = e.message; }
     const cur = route();
     if (cur.view === "remediate" && !(quiet && document.activeElement?.tagName === "TEXTAREA")) render();
-    const working = (REM.list?.items || []).some(i => i.working);
+    const working = (REM.list?.items || []).some(i => i.working) || !!REM.queue?.running || (REM.queue?.pending || []).length;
     clearTimeout(REM.timer);
     if (working && route().view === "remediate") REM.timer = setTimeout(() => loadRem(route().p.get("open"), true), 1500);
   }
@@ -628,9 +639,9 @@
     const tab = r.p.get("tab") || (REM.list.counts.decide ? "decide" : "all"), c = REM.list.counts;
     const items = REM.list.items.filter(i => tab === "all" || i.tab === tab).sort((a, b) => a.rank - b.rank);
     const chip = (k, l, n) => `<button class="filter-chip ${tab === k ? "active" : ""}" data-rm-tab="${k}">${l} <small>${n}</small></button>`;
-    const rows = items.map(i => `<button class="vt-row rm" data-rm-open="${esc(i.rid)}"><span class="mono">${esc(i.rid)}<small>#${i.rank}</small></span><span><b>${esc(i.target_label)}</b><small>${esc(short(i.action || "", 110))}</small><small class="muted-small">${i.finding_ids.map(esc).join(" · ")}${i.author && i.author !== "template" ? " · by agent" : ""}</small></span><span>${decTag(i.decision)}</span><span>${riskTag(i.priority)}${i.stage_risk !== i.priority ? `<small>rules: ${esc(i.stage_risk)}</small>` : ""}</span><span>${confTag("", i.finding_confidence)}</span><span>${confTag("", i.fix_confidence)}</span><span class="rm-status">${i.working ? `<span class="spin"></span> ${esc(i.working.what)}` : esc(STATUS_LABEL[i.status] || i.status || "")}${i.branch ? `<small class="mono">${esc(i.branch)}</small>` : ""}${i.tab === "decide" && i.gate_reasons.length ? `<small>${esc(i.gate_reasons.join(" · "))}</small>` : ""}</span></button>`).join("");
+    const rows = items.map(i => `<button class="vt-row rm" data-rm-open="${esc(i.rid)}"><span class="mono">${esc(i.rid)}<small>#${i.rank}</small></span><span><b>${esc(i.target_label)}</b><small>${esc(short(i.action || "", 110))}</small><small class="muted-small">${i.finding_ids.map(esc).join(" · ")}${i.author && i.author !== "template" ? " · by agent" : ""}${i.target_kind === "build_health" ? " · build health (not a CVE)" : i.target_kind === "code" ? " · code change in your app (CWE-89)" : ""}</small></span><span>${decTag(i.decision)}</span><span>${riskTag(i.priority)}${i.stage_risk !== i.priority ? `<small>rules: ${esc(i.stage_risk)}</small>` : ""}</span><span>${confTag("", i.finding_confidence)}</span><span>${confTag("", i.fix_confidence)}</span><span class="rm-status">${i.working ? `<span class="spin"></span> ${esc(i.working.what)}` : esc(STATUS_LABEL[i.status] || i.status || "")}${i.branch ? `<small class="mono">${esc(i.branch)}</small>` : ""}${i.tab === "decide" && i.gate_reasons.length ? `<small>${esc(i.gate_reasons.join(" · "))}</small>` : ""}</span></button>`).join("");
     const open = r.p.get("open");
-    return head + flow + `<section class="panel"><div class="panel-header"><div><h2>Remediation plan</h2><p>${REM.list.items.length} remediations for ${REM.list.items.reduce((n, i) => n + i.finding_ids.length, 0)} findings · one upgrade can fix several CVEs · workflow engine: ${esc(REM.list.engine || "")}</p></div></div>
+    return head + flow + queueStrip() + `<section class="panel"><div class="panel-header"><div><h2>Remediation plan</h2><p>${REM.list.items.length} remediations for ${REM.list.items.reduce((n, i) => n + i.finding_ids.length, 0)} findings · one upgrade can fix several CVEs · workflow engine: ${esc(REM.list.engine || "")}</p></div></div>
       <div class="table-filters"><div class="filter-chips">${chip("decide", "Needs your decision", c.decide)}${chip("ready", "Ready", c.ready)}${chip("auto", "Auto-planned", c.auto)}${chip("unresolved", "Unresolved", c.unresolved)}${chip("decided", "Decided", c.decided)}${chip("all", "All", REM.list.items.length)}</div></div>
       <div class="vtable"><div class="vt-head rm"><span>ID</span><span>REMEDIATION</span><span>DECISION</span><span>PRIORITY</span><span>FINDING CONF.</span><span>FIX CONF.</span><span>STATUS</span></div>${rows || `<div class="empty-state">Nothing in this tab.</div>`}</div></section>`
       + (open ? remModal(open) : "");
@@ -639,20 +650,147 @@
   function diffHtml(d) {
     return `<pre class="diff">${d.split("\n").map(l => `<span class="${l.startsWith("+++") || l.startsWith("---") ? "dh" : l.startsWith("@@") ? "dc" : l.startsWith("+") ? "da" : l.startsWith("-") ? "dd" : ""}">${esc(l)}</span>`).join("\n")}</pre>`;
   }
-  const chk = (label, c) => `<div class="chk-row"><span class="chk ${c.status}">${{ pass: "✓", fail: "✕", unknown: "?", "n/a": "–", skipped: "–", unsure: "?" }[c.status] || "·"}</span><b>${esc(label)}</b><small>${esc(c.detail || "")}</small></div>`;
-  const CHK_LABEL = { patch_applies: "Patch applies", scope_ok: "Only allowed files", candidate_clean: "New version has no known vulns", constraints_resolve: "Dependency constraints resolve", available: "Version on the index", runtime_compatible: "Python version compatible", lockfile_consistent: "Lockfile matches manifest", security_check: "Security check on patched files", ai_critic: "Independent AI review", build: "Build", tests: "Tests (no regressions)", rescan_resolved: "Rescan: finding resolved", no_new_vulns: "Rescan: nothing new introduced" };
+  const CHK_LABEL = { patch_applies: "Patch applies", scope_ok: "Only allowed files", candidate_clean: "New version has no known vulns", constraints_resolve: "Dependency constraints resolve", available: "Version on the index", runtime_compatible: "Python version compatible", lockfile_consistent: "Lockfile matches manifest", security_check: "Security check on patched files", ai_critic: "Independent AI review", build: "Build", tests: "Tests (no regressions)", rescan_resolved: "Rescan: finding resolved", no_new_vulns: "Rescan: nothing new introduced", install: "Dependencies install", deps_compatible: "Installed set is consistent", proof_of_fix: "Proof-of-fix probe", security_tests: "Guardian security tests (before → after)", target_install: "Installs on the target Python", target_boot: "Starts on the target Python" };
+
+  // ---- validation report: what each check proves, how it is run, and its raw evidence
+  const METHOD = { static: ["STATIC", "reads the files and package metadata; runs nothing"], dynamic: ["DYNAMIC", "runs the code in a throwaway sandbox"], rescan: ["RESCAN", "runs the whole Guardian scan again on the patched copy (OSV database + supply-chain checks)"], ai: ["AI", "a second model reviews the patch; advisory only"] };
+  const CHECK_INFO = {
+    patch_applies: { m: "static", proves: "The diff is well-formed and applies to the exact files in the repository at HEAD.", how: "git apply --check on a scratch copy of the repository.", unknown: "" },
+    scope_ok: { m: "static", proves: "The patch only touches files this kind of fix is allowed to change (the skill's file list), so a fix cannot quietly edit unrelated code.", how: "Every changed path is matched against the allowed paths of the skill that produced the fix.", unknown: "" },
+    lockfile_consistent: { m: "static", proves: "The manifest and the lockfile agree after the patch, so the version that gets installed is the version that was reviewed.", how: "Compares the pinned version in requirements*.txt with the lockfile entry.", unknown: "" },
+    build: { m: "static", proves: "The patched project still compiles and its dependency files are valid.", how: "python -m compileall on every file; every requirement line is parsed; changed workflow files must be valid YAML.", unknown: "" },
+    security_check: { m: "static", proves: "The specific change that removes the risk is really in the patched files (the new pin, the removed package, the safe API call).", how: "Reads the patched files and checks the target: e.g. the manifest now pins the fixed version, no unsafe yaml.load( call is left.", unknown: "No automatic check exists for this kind of change; a reviewer has to read the diff." },
+    candidate_clean: { m: "static", proves: "The new version does not bring its own known vulnerabilities.", how: "OSV lookup for the exact target version. The sandbox rescan settles it when the static lookup could not run.", unknown: "OSV could not be queried when the fix was planned (offline). Run the sandbox validation: the rescan looks the version up." },
+    available: { m: "static", proves: "The target version exists on the package index and is not yanked.", how: "Release list from PyPI (or the configured index). Settled by the sandbox when the install downloads it.", unknown: "The release list was not available. The sandbox install proves it by downloading the version." },
+    runtime_compatible: { m: "static", proves: "The new version supports the project's Python version.", how: "The release's requires_python against the project's Python (Dockerfile, .python-version, CI, or the running interpreter).", unknown: "requires_python was not available. A successful sandbox install proves compatibility with the Python it used." },
+    constraints_resolve: { m: "static", proves: "No other dependency pins a range that excludes the new version.", how: "Reads the lockfile's dependency constraints; in the sandbox, pip check verifies the whole installed set.", unknown: "There is no lockfile, so the dependents' constraints are unknown statically. pip check in the sandbox settles it." },
+    install: { m: "dynamic", proves: "The patched dependency set really installs, from the real index, on a real Python.", how: "A throwaway virtual environment (uv) is created next to the worktree. The project's requirements at HEAD are installed first, then the patched requirements; Python versions are tried in order (project pin, current, 3.12, 3.11) until the original set installs.", unknown: "" },
+    deps_compatible: { m: "dynamic", proves: "After the upgrade every installed package's own requirements are still satisfied: no hidden version conflict.", how: "pip check on the patched environment, compared with pip check before the patch. Conflicts that already existed, and those caused by the test runner Guardian adds, do not count.", unknown: "" },
+    tests: { m: "dynamic", proves: "The application still behaves as its own test-suite expects: no regression.", how: "The repository's own tests (test_*.py, *_test.py, tests.py) run with pytest in the sandbox environment, before and after the patch. A test that already failed before is not a regression. Guardian does not write these tests; they are the project's.", unknown: "Test files exist but none ran (collection failed)." },
+    proof_of_fix: { m: "dynamic", proves: "The vulnerable behaviour itself is gone, not just the version number: the same probe shows the bug on the old version and not on the new one.", how: "An AI agent writes a small probe script per CVE from the advisory text. It passes a safety check (no network, process, shell, eval, file deletion or version reading), then runs in two isolated environments: old version and new version. If it cannot show the difference, both outputs go back to the agent (up to 3 tries). The verdict comes from the observed output, never from the model.", unknown: "The agent could not write a probe that reproduces the bug on the old version. That is not evidence against the fix: the rescan and the tests still apply." },
+    rescan_resolved: { m: "rescan", proves: "Guardian itself no longer reports the finding on the patched code.", how: "The full scan (SBOM, code map, OSV matching, supply-chain checks) runs again on the patched worktree, with the same vulnerability source as the original scan, and the findings are compared one by one.", unknown: "The rescan could not decide (e.g. no vulnerability data, or the risk was only reduced)." },
+    no_new_vulns: { m: "rescan", proves: "The fix does not introduce a new vulnerability or a new supply-chain warning.", how: "Findings of the rescan that the original scan did not have. A new CVE or verified harmful behaviour fails; a metadata-only change signal (e.g. project URLs changed in the new release) needs a person to look.", unknown: "The rescan found a new warning that is not proof of harm; read it below." },
+    security_tests: { m: "dynamic", proves: "Tests Guardian wrote for this fix behave as expected on the code before and after it: T1 exploit and T2 guard fail before and pass after, T3 feature passes on both.", how: "One pytest file per fix in tests/guardian/, run in the original environment (before) and the patched one (after). T1 comes from a curated reference exploit or from a proof-of-fix probe that was proven; T1 and T3 are kept only if the expected result was observed. The tests are committed with the fix.", unknown: "Fewer than two tests could be kept, or there was no before environment, so fail → pass could not be observed." },
+    target_install: { m: "dynamic", proves: "The patched dependencies install on the Python the project says it runs on (its Dockerfile, .python-version or runtime.txt).", how: "A fresh environment on the target Python; the patched requirements are installed from the real index.", unknown: "" },
+    target_boot: { m: "dynamic", proves: "The patched app really starts on the target Python and answers HTTP requests: an old pin can install and still crash at import.", how: "Flask/FastAPI/Django is detected, the database is created on a temporary SQLite file, the server is started on a free local port, and / plus up to 5 parameter-free GET routes are requested. Healthy = no 5xx and at least one 2xx/3xx.", unknown: "" },
+    ai_critic: { m: "ai", proves: "An independent model, given the evidence and the diff, agrees that the patch removes the cited vulnerable path.", how: "One structured call to a second model with the evidence pack and all check results. Answers citing unknown evidence are rejected. Advisory only: it can lower confidence but never raise it on its own.", unknown: "The model was unsure." },
+  };
+  const VQ = [
+    ["Is the change correct and contained?", ["patch_applies", "scope_ok", "lockfile_consistent", "build"]],
+    ["Does it remove the vulnerability?", ["security_check", "security_tests", "rescan_resolved", "proof_of_fix", "candidate_clean", "ai_critic"]],
+    ["Does it break anything or add new risk?", ["target_install", "target_boot", "install", "deps_compatible", "tests", "available", "runtime_compatible", "constraints_resolve", "no_new_vulns"]],
+  ];
+  const SANDBOX_KEYS = ["build", "install", "deps_compatible", "tests", "proof_of_fix", "security_tests", "rescan_resolved", "no_new_vulns"];
+  const ICON = { pass: "✓", fail: "✕", unknown: "?", unsure: "?", "n/a": "–", skipped: "–", pending: "…" };
+  const pre = (t, cls = "") => t ? `<pre class="vlog ${cls}">${esc(t)}</pre>` : "";
+  const kv = (k, val) => val ? `<div class="vkv"><small>${esc(k)}</small><span>${val}</span></div>` : "";
+
+  function chkEvidence(k, c, p, v) {
+    const ev = [];
+    if (c.confirmed_by) ev.push(kv("Before the sandbox", esc(c.static_detail || "")), kv("Settled by", "the sandbox run"));
+    if (k === "patch_applies" && p.diff) ev.push(kv("Diff", `${(p.diff.match(/^\+[^+]/gm) || []).length} line(s) added, ${(p.diff.match(/^-[^-]/gm) || []).length} removed in ${(p.edits || []).map(e => esc(e.path)).join(", ")}`));
+    if (k === "install" && v) {
+      const at = (v.env?.attempts || v.install?.attempts || []);
+      if (at.length) ev.push(kv("Python versions tried", at.map(a => `${a.ok ? "✓" : "✕"} ${esc(a.python)}${a.ok ? "" : ` <small>(${esc(short(a.error || "", 90))})</small>`}`).join("<br>")));
+      ev.push(kv("Environment", esc([v.install?.tool && `${v.install.tool} venv`, v.install?.python && `Python ${v.install.python}`].filter(Boolean).join(" · "))));
+      ev.push(kv("Command", v.install?.command ? `<code>${esc(v.install.command)}</code>` : ""));
+      if (v.install?.log?.trim()) ev.push(pre(v.install.log));
+    }
+    if (k === "deps_compatible" && v?.deps_check) {
+      const d = v.deps_check;
+      ev.push(kv("New conflicts", d.new?.length ? d.new.map(esc).join("<br>") : "none"));
+      if (d.preexisting?.length) ev.push(kv("Already there before the patch", d.preexisting.map(esc).join("<br>")));
+      if (d.ignored_tool?.length) ev.push(kv("Ignored (from Guardian's test runner)", d.ignored_tool.map(esc).join("<br>")));
+    }
+    if (k === "tests" && v?.tests) {
+      const t = v.tests;
+      ev.push(kv("Test files (from the repository)", (t.files || []).map(f => `<code>${esc(f)}</code>`).join(" ") || "none found"));
+      ev.push(kv("Command", t.after?.command ? `<code>${esc(t.after.command)}</code>` : ""));
+      ev.push(kv("Before the patch", esc(t.before?.summary || "")), kv("After the patch", esc(t.after?.summary || "")));
+      if (t.after?.log) ev.push(`<details class="vsub"><summary>pytest output after the patch</summary>${pre(t.after.log)}</details>`);
+    }
+    if (k === "proof_of_fix" && v?.probe) {
+      const pr = v.probe;
+      ev.push(kv("Versions", `${esc(pr.package || "")} ${esc(pr.old || "")} (vulnerable) vs ${esc(pr.new || "")} (fixed)${pr.python ? ` · Python ${esc(pr.python)}` : ""}${pr.model ? ` · written by ${esc(pr.model)}` : ""}`));
+      if (pr.llm_error) ev.push(kv("LLM", esc(pr.llm_error)));
+      const VB = { proven: ["proven", "green"], still_vulnerable: ["probe still triggers on the new version", "orange"], not_reproduced: ["could not reproduce", "muted"], error: ["no runnable probe", "muted"] };
+      ev.push((pr.probes || []).map(r => `<div class="probe-card"><div class="probe-top"><b>${esc(r.vuln_id || "")}</b> ${esc(short(r.summary || "", 80))} ${tag((VB[r.verdict] || [r.verdict || "?"])[0], (VB[r.verdict] || [, "muted"])[1])}${r.tries ? `<small>${r.tries} attempt(s)</small>` : ""}</div>
+        ${r.what ? `<p class="muted-small">${esc(r.what)}</p>` : ""}${r.why ? `<p class="muted-small">${esc(r.why)}</p>` : ""}
+        ${r.code ? `<div class="probe-runs"><span><small>ON ${esc(pr.old || "OLD")}</small>${tag(r.old?.marker || "—", r.old?.marker === "VULNERABLE" ? "orange" : "muted")}</span><span><small>ON ${esc(pr.new || "NEW")}</small>${tag(r.new?.marker || "—", r.new?.marker === "SAFE" ? "green" : "muted")}</span></div>
+        <details class="vsub"><summary>Probe script and output</summary>${pre(r.code, "code")}<small>Output on ${esc(pr.old || "")}:</small>${pre(r.old?.output || "")}<small>Output on ${esc(pr.new || "")}:</small>${pre(r.new?.output || "")}</details>` : ""}</div>`).join(""));
+    }
+    if ((k === "rescan_resolved" || k === "no_new_vulns") && v?.rescan) {
+      const rs = v.rescan;
+      if (k === "rescan_resolved") {
+        ev.push(kv("Resolved", (rs.resolved || []).map(esc).join(", ") || "none"));
+        if (rs.remaining?.length) ev.push(kv("Still present", rs.remaining.map(x => `${esc(x.finding_id)} ${esc(x.before || "")} → ${esc(x.after || "")}`).join("<br>")));
+        ev.push(kv("Vulnerabilities in the whole project", `${rs.vulns_before ?? "?"} before → ${rs.vulns_after ?? "?"} after`));
+        if (rs.package) ev.push(kv(`Known vulnerabilities left in ${esc(rs.package)}`, (rs.package_vulns_after || []).map(esc).join(", ") || "none"));
+      } else {
+        ev.push(kv("New findings", (rs.new || []).map(n => `${n.hard ? "✕" : "?"} ${esc(n.title || "")} <small>(${esc(n.risk || "")})</small>${(n.signals || []).length ? `<br><small>${n.signals.map(s => `${esc(s.check)} · ${esc(s.strength)}${s.behaviour ? " · behaviour seen" : ""}`).join(" — ")}</small>` : ""}`).join("<br>") || "none"));
+      }
+      ev.push(kv("SBOM diff", [...(rs.sbom_diff?.changed || []).map(x => `changed ${esc(x)}`), ...(rs.sbom_diff?.added || []).map(x => `added ${esc(x)}`), ...(rs.sbom_diff?.removed || []).map(x => `removed ${esc(x)}`)].join("<br>") || "no component changed"));
+    }
+    if (k === "security_tests" && v?.security_tests) ev.push(secTests(v.security_tests, true));
+    if (k === "target_install" && v?.target_install) { const t = v.target_install; ev.push(kv("Target", esc(`Python ${t.python} — ${t.target?.source || ""}`)), kv("Command", t.command ? `<code>${esc(t.command)}</code>` : ""), kv("Result", esc(t.ok ? `installed in ${t.seconds}s` : t.error))); }
+    if (k === "ai_critic" && c.evidence_ids?.length) ev.push(kv("Evidence cited", c.evidence_ids.map(esc).join(", ")));
+    return ev.join("");
+  }
+
+  function chkRow(k, c, p, v, pending) {
+    const info = CHECK_INFO[k] || { m: "static", proves: "", how: "" }, [mlab, mdesc] = METHOD[info.m];
+    const st = pending ? "pending" : c.status;
+    const detail = pending ? "not run yet: runs in the sandbox after you approve the proposal" : (c.detail || "");
+    const why = (st === "unknown" || st === "unsure") && info.unknown ? `<div class="vwhy"><b>Why “?”</b> ${esc(info.unknown)}</div>` : "";
+    return `<details class="vchk ${st}"><summary><span class="chk ${st}">${ICON[st] || "·"}</span><b>${esc(CHK_LABEL[k] || k)}</b><span class="vm ${info.m}" title="${esc(mdesc)}">${mlab}</span><small>${esc(detail)}</small></summary>
+      <div class="vbody"><div class="vkv"><small>What it proves</small><span>${esc(info.proves)}</span></div><div class="vkv"><small>How it is checked</small><span>${esc(info.how)}</span></div>${pending ? "" : chkEvidence(k, c, p, v)}${why}</div></details>`;
+  }
+
+  function validationReport(p, v) {
+    const checks = p.checks || {};
+    const qs = VQ.map(([q, keys]) => {
+      const rows = keys.map(k => checks[k] && checks[k].status !== "n/a" ? [k, checks[k], false] : (!v && SANDBOX_KEYS.includes(k) && p.edits?.length && !["n/a"].includes(checks[k]?.status) ? [k, {}, true] : null)).filter(Boolean);
+      if (!rows.length) return "";
+      const sts = rows.filter(r => !r[2]).map(r => r[1].status);
+      const gst = sts.includes("fail") ? "fail" : rows.some(r => r[2]) || sts.some(s => s === "unknown" || s === "unsure") ? "unknown" : "pass";
+      const head = { pass: "yes — all checks pass", fail: "no — a check failed", unknown: rows.some(r => r[2]) ? "not fully answered yet — sandbox not run" : "partly — some checks could not decide" }[gst];
+      return `<div class="vq"><div class="vq-head"><span class="chk ${gst}">${ICON[gst]}</span><b>${esc(q)}</b><small>${head}</small></div>${rows.map(([k, c, pend]) => chkRow(k, c, p, v, pend)).join("")}</div>`;
+    }).join("");
+    const fc = p.fix_confidence;
+    const rules = [["high", "Everything passes, the sandbox passed, and something actually executed the changed code: the project's tests ran or a proof-of-fix probe showed the bug gone. (Or: static checks pass, the AI critic agrees, same-major version bump, nothing unknown.)"],
+      ["medium", "Nothing failed, but something is still open: a check is unknown, the sandbox has not run, or nothing executed the changed code."],
+      ["low", "Any check failed, the AI critic disagrees, or there is no code change (escalation)."]];
+    const explain = `<details class="vsub fc-explain"><summary>How fix confidence is decided</summary><p class="muted-small">Fixed rules on the check results above; the AI cannot set it.</p><ul class="fc-rules">${rules.map(([lv, t]) => `<li class="${lv === fc ? "on" : ""}">${confTag("", lv)} ${esc(t)}</li>`).join("")}</ul><p class="muted-small"><b>This fix:</b> ${esc((p.fix_confidence_reasons || []).join("; "))}</p></details>`;
+    const runlog = v ? `<details class="vsub"><summary>Sandbox run log · ${esc(v.status)}${v.commit ? ` · commit ${esc(v.commit.slice(0, 8))}` : ""}</summary>${v.detail ? `<p class="muted-small">${esc(v.detail)}</p>` : ""}<ol class="val-steps">${(v.steps || []).map(s => `<li>${esc(s.msg)}</li>`).join("")}</ol></details>` : "";
+    const sbom = v?.rescan ? `<div class="sbom-diff"><span><small>SBOM REMOVED</small>${(v.rescan.sbom_diff.removed || []).map(x => tag(x, "orange")).join("") || "—"}</span><span><small>SBOM CHANGED</small>${(v.rescan.sbom_diff.changed || []).map(x => tag(x, "blue")).join("") || "—"}</span><span><small>SBOM ADDED</small>${(v.rescan.sbom_diff.added || []).map(x => tag(x, "amber")).join("") || "—"}</span><span><small>FINDINGS</small>${v.rescan.before_total} → ${v.rescan.after_total}</span></div>` : "";
+    const legend = `<div class="vlegend">${Object.entries(METHOD).map(([k, [l, d]]) => `<span><span class="vm ${k}">${l}</span> ${esc(d)}</span>`).join("")}</div>`;
+    return `<p class="muted-small">Click any check to see what it proves, how it was run and the raw evidence.</p>${legend}<div class="vq-list">${qs}</div>${sbom}${explain}${runlog}`;
+  }
+
+  function priorityExplain(f) {
+    if (f.decision_model === "guardian-code") return `<details class="vsub"><summary>How this priority was computed</summary><p class="pe-step">1. Guardian parsed the code (AST) and found SQL built by string formatting and sent to the database (CWE-89).</p><p class="pe-step">2. Reachability: ${(f.priority_reasons || []).map(esc).join(" → ")}</p><p class="pe-step">3. Rule: reachable from an HTTP route and handles login/passwords → critical; reachable → high; setup scripts only → low.</p></details>`;
+    const ins = f.decision_inputs || {}, by = f.decision_by || {}, why = f.decision_why || {};
+    const IN = f.decision_model === "guardian-supplychain" ? [["suspicion", "Suspicion"], ["exposure", "Exposure"]] : [["exploitation", "Exploitation"], ["automatable", "Automatable"], ["technical_impact", "Technical impact"], ["mission", "Mission & well-being"]];
+    const table = f.decision_model === "guardian-supplychain"
+      ? `Guardian supply-chain table: suspicion <b>${esc(ins.suspicion)}</b> × exposure <b>${esc(String(ins.exposure || "").replace(/_/g, " "))}</b> → <b>${esc(f.decision)}</b>`
+      : `SSVC-inspired table (CISA): row exploitation <b>${esc(ins.exploitation)}</b> · automatable <b>${esc(ins.automatable)}</b> · impact <b>${esc(ins.technical_impact)}</b>, column mission <b>${esc(ins.mission)}</b> → <b>${esc(f.decision)}</b>`;
+    return `<details class="vsub"><summary>How this priority was computed</summary>
+      <div class="pe-list">${IN.filter(([k]) => ins[k] != null).map(([k, l]) => `<div class="vkv"><small>${l} = ${esc(String(ins[k]).replace(/_/g, " "))} · ${by[k] === "ai" ? "decided by AI (checked against evidence)" : "decided by a fixed rule"}</small><span>${esc(why[k] || "")}</span></div>`).join("")}</div>
+      <p class="pe-step">1. ${table}</p><p class="pe-step">2. Priority: ${(f.priority_reasons || []).map(esc).join(" → ")}</p>
+      <p class="pe-step">3. Finding confidence: ${(f.confidence_reasons || []).map(esc).join(" → ")}</p></details>`;
+  }
 
   function remModal(rid) {
     const u = REM.detail.get(rid);
     if (!u) { loadRem(rid); return `<div class="modal-back" id="modal-back"><div class="modal" role="dialog" aria-modal="true"><button class="modal-x" id="modal-x" aria-label="Close">×</button><div class="empty-state">Loading ${esc(rid)}…</div></div></div>`; }
     const p = u.proposals[u.current] || {}, paused = u.paused_at, v = u.validation;
     const IN_LABEL = { exploitation: "Exploitation", automatable: "Automatable", technical_impact: "Technical impact", mission: "Mission & well-being", suspicion: "Suspicion", exposure: "Exposure" };
-    const why = (u.findings || []).map(f => `<div class="why-card"><div class="why-top"><b>${esc(f.finding_id)}</b> ${esc(short(f.title, 90))} ${decTag(f.decision)}${riskTag(f.priority)}<button class="text-link" data-evidence="${esc(f.finding_id)}">View evidence →</button></div>
+    const why = (u.findings || []).map(f => `<div class="why-card"><div class="why-top"><b>${esc(f.finding_id)}</b> ${esc(short(f.title, 90))} ${decTag(f.decision)}${riskTag(f.priority)}${f.kind === "code" ? "" : `<button class="text-link" data-evidence="${esc(f.finding_id)}">View evidence →</button>`}</div>
       <div class="dp-row">${Object.entries(IN_LABEL).filter(([k]) => f.decision_inputs?.[k] != null).map(([k, l]) => `<span class="dp" title="${esc(f.decision_why?.[k] || "")}"><small>${l}</small><b>${esc(String(f.decision_inputs[k]).replace(/_/g, " "))}</b><i class="by ${f.decision_by?.[k]}">${f.decision_by?.[k] === "ai" ? "AI" : "rule"}</i></span>`).join("")}</div>
-      <div class="dp-facts">${f.kind === "vulnerability" ? `CVSS <b>${f.cvss?.score ?? "?"}</b> · EPSS ${f.epss ? `<b>${f.epss.probability ?? "?"}</b> (pct ${f.epss.percentile ?? "?"})` : "<b>n/a</b>"} · KEV <b>${f.kev ? "yes" : "no"}</b>` : "CVSS / EPSS / KEV: <b>n/a</b> (supply-chain finding, no CVE)"} · sensitivity <b>${esc(f.sensitivity?.level || "")}</b> · model ${esc(f.decision_model)}</div>
+      <div class="dp-facts">${f.kind === "code" ? `<b>CWE-89 SQL injection</b> in your own code · ${(f.evidence || []).map(e => `<code>${esc(e.where)}</code>`).join(" ")}` : f.kind === "vulnerability" ? `CVSS <b>${f.cvss?.score ?? "?"}</b> · EPSS ${f.epss ? `<b>${f.epss.probability ?? "?"}</b> (pct ${f.epss.percentile ?? "?"})` : "<b>n/a</b>"} · KEV <b>${f.kev ? "yes" : "no"}</b>` : "CVSS / EPSS / KEV: <b>n/a</b> (supply-chain finding, no CVE)"} · sensitivity <b>${esc(f.sensitivity?.level || "")}</b> · model ${esc(f.decision_model)}</div>
       <ul class="reason-list">${(f.priority_reasons || []).map(x => `<li>${esc(x)}</li>`).join("")}${(f.confidence_reasons || []).slice(1).map(x => `<li>${esc(x)}</li>`).join("")}</ul>
       ${Object.entries(f.decision_why || {}).filter(([k]) => f.decision_by?.[k] === "ai").slice(0, 1).map(([, t]) => `<p class="muted-small ai-note"><span class="ai-badge">AI</span> ${esc(t)}</p>`).join("")}
-      ${(f.history || []).filter(h => h.change_reason).slice(-1).map(h => `<p class="muted-small">History: ${esc(h.change_reason)}</p>`).join("")}</div>`).join("");
+      ${(f.history || []).filter(h => h.change_reason).slice(-1).map(h => `<p class="muted-small">History: ${esc(h.change_reason)}</p>`).join("")}${priorityExplain(f)}</div>`).join("");
     const er = p.expected_risk || {};
     const fix = `<div class="fix-head"><b>${esc(p.action || "")}</b><div class="m-tags">${tag(`v${p.version} · ${p.author === "template" ? "deterministic template" : p.author}`, p.author === "template" ? "muted" : "violet")}${p.skill ? tag(`skill: ${p.skill}`, "blue") : ""}${confTag("fix confidence", p.fix_confidence)}</div></div>
       <div class="risk-move">${riskTag(er.before)}<i>→</i>${er.after === "none" ? tag("resolved", "green") : riskTag(er.after)}<small>${esc(er.effect || "")}</small></div>
@@ -662,8 +800,7 @@
       ${(p.notes || []).length && p.diff ? msec("NOTES", `<ul class="reason-list">${p.notes.map(x => `<li>${esc(x)}</li>`).join("")}</ul>`) : ""}
       ${(p.alternatives_rejected || []).length ? msec("ALTERNATIVES THE AGENT REJECTED", `<ul class="reason-list">${p.alternatives_rejected.map(a => `<li><b>${esc(a.candidate)}</b>: ${esc(a.why)}</li>`).join("")}</ul>`) : ""}
       ${(p.agent?.trace || []).length ? `<details class="agent-trace"><summary>How the agent worked · ${p.agent.tool_calls} tool calls · skills loaded: ${esc((p.agent.skills_loaded || []).join(", ") || "none")}</summary>${p.agent.trace.map((t, i) => `<div class="tstep ${t.ok ? "" : "fail"}"><span class="tnum">${i + 1}</span><div><div class="ttop"><code>${esc(t.tool)}</code></div><small class="tin">${esc(t.input)}</small><p>${esc(t.result)}</p></div></div>`).join("")}</details>` : ""}`;
-    const checks = Object.entries(p.checks || {}).filter(([, c]) => c.status !== "n/a").map(([k, c]) => chk(CHK_LABEL[k] || k, c)).join("");
-    const val = v ? `<div class="val-box ${v.status}"><b>Sandbox validation: ${esc(v.status)}</b>${v.detail ? `<small>${esc(v.detail)}</small>` : ""}<ol class="val-steps">${(v.steps || []).map(s => `<li>${esc(s.msg)}</li>`).join("")}</ol>${v.rescan ? `<div class="sbom-diff"><span><small>SBOM REMOVED</small>${(v.rescan.sbom_diff.removed || []).map(x => tag(x, "orange")).join("") || "—"}</span><span><small>SBOM CHANGED</small>${(v.rescan.sbom_diff.changed || []).map(x => tag(x, "blue")).join("") || "—"}</span><span><small>SBOM ADDED</small>${(v.rescan.sbom_diff.added || []).map(x => tag(x, "amber")).join("") || "—"}</span><span><small>FINDINGS</small>${v.rescan.before_total} → ${v.rescan.after_total}</span></div>` : ""}${v.install ? `<small class="muted-small">${esc(v.install.detail)}</small>` : ""}</div>` : "";
+    const valHead = v ? `<div class="val-box ${v.status}"><b>Sandbox validation: ${esc(v.status)}</b>${v.detail ? `<small>${esc(v.detail)}</small>` : ""}</div>` : "";
     const alts = u.candidates.filter(cd => cd.cid !== p.candidate_id || p.author !== "template").map(cd => `<div class="alt-row ${cd.excluded ? "excluded" : ""}"><span><b>${esc(cd.label)}</b><small>${esc([...(cd.notes || []), ...(cd.compatibility || [])].slice(0, 2).join(" · "))}</small></span>${!cd.excluded && paused === "proposal_review" && !u.working ? `<button class="quiet-button" data-rm-alt="${cd.cid}">Use this</button>` : cd.excluded ? tag("excluded", "muted") : ""}</div>`).join("");
     const agentN = u.proposals.filter(x => String(x.author).startsWith("agent")).length;
     let actions = "";
@@ -684,8 +821,9 @@
       ${u.last_agent_error ? `<div class="banner-warn"><b>The agent's last attempt was not used:</b> ${esc(u.last_agent_error)}</div>` : ""}${u.last_error ? `<div class="banner-warn">${esc(u.last_error)}</div>` : ""}
       ${actions}
       ${msec("PROPOSED FIX", fix)}
-      ${msec(`CHECKS · fix confidence ${esc(p.fix_confidence || "")}`, `<div class="chk-list">${checks}</div>${(p.fix_confidence_reasons || []).length ? `<p class="muted-small">Fix confidence ${esc(p.fix_confidence)}: ${esc(p.fix_confidence_reasons.join("; "))}</p>` : ""}${val}`)}
-      ${msec("WHY THIS PRIORITY", why)}
+      ${msec(`VALIDATION · HOW WE KNOW THIS FIX IS SAFE · fix confidence ${esc(p.fix_confidence || "")}`, valHead + validationReport(p, v))}
+      ${v?.security_tests ? msec("SECURITY TESTS · WRITTEN BY GUARDIAN · RUN BEFORE AND AFTER THE FIX", secTests(v.security_tests)) : p.edits?.length ? msec("SECURITY TESTS", `<p class="muted-small">Written and run in the sandbox during validation: T1 exploit (fail → pass), T2 guard (fail → pass), T3 feature (pass → pass).</p>`) : ""}
+      ${u.build_health ? msec("WHY THIS FIX · BUILD HEALTH", buildHealthBox(u.build_health)) : msec("WHY THIS PRIORITY", why)}
       ${alts ? msec("OTHER CANDIDATES", `<div class="alt-list">${alts}</div>`) : ""}
       ${u.proposals.length > 1 ? msec("EARLIER PROPOSALS", `<ul class="reason-list">${u.proposals.slice(0, -1).map(x => `<li>v${x.version} · ${esc(x.author)} · ${esc(x.action)} · fix confidence ${esc(x.fix_confidence)}</li>`).join("")}</ul>`) : ""}
       ${msec("AUDIT TRAIL", `<ol class="timeline">${tl || "<li>—</li>"}</ol>`)}`;
@@ -724,6 +862,157 @@
     }));
   }
   const suggestBox = x => mode === "web" ? `<div class="m-sec suggest"><div class="detail-label">SUGGEST A REMEDIATION</div><p class="muted-small">Your suggestion goes to the remediation agent for this finding; the new proposal is checked and waits for your approval on the Remediation page.</p><textarea id="sg-text" rows="2" placeholder="e.g. keep PyYAML 5.x and switch the loader to yaml.safe_load"></textarea><div class="act-row"><button class="primary-button" data-suggest="${esc(x.id)}">✦ Send to remediation agent</button><button class="quiet-button" data-remfor="${esc(x.id)}">Go to remediation →</button><small id="sg-msg" class="muted-small"></small></div></div>` : "";
+
+  // ------------------------------------------------------------------ page 4 additions: queue, security tests, build health
+  const RES = { pass: ["✓", "ok"], fail: ["✕", "bad"], error: ["✕", "bad"], skip: ["–", "muted"], "not run": ["·", "muted"] };
+  const resMark = x => { const [i, c] = RES[x] || ["?", "muted"]; return `<span class="tres ${c}" title="${esc(x)}">${i} ${esc(x)}</span>`; };
+  const KIND_INFO = { T1: ["exploit", "violet"], T2: ["guard, not proof", "blue"], T3: ["feature", "green"] };
+  function queueStrip() {
+    const q = REM.queue; if (!q) return "";
+    const bh = q.build_health;
+    const run = q.running ? `<span class="spin"></span> <b>${q.running === "@build_health" ? "Checking build health (does it install on the target Python?)" : `Auto-validating ${esc(q.running)} in the sandbox`}…</b> <small>${q.position} of ${q.total}${q.pending.length ? ` · next: ${q.pending.slice(0, 4).map(x => esc(x === "@build_health" ? "build health" : x)).join(", ")}` : ""}</small>` :
+      `<b>Auto-validation</b> <small>${q.policy === "off" ? "off (GUARDIAN_AUTO_VALIDATE=off)" : `${q.done.length} run${q.done.length === 1 ? "" : "s"} done · Critical/High fixes with a patch are validated before you open them`}</small>`;
+    const bhLine = bh && bh.target ? `<div class="bh-line ${bh.status === "ok" ? "ok" : "warn"}"><b>Build health · Python ${esc(bh.target.version)}</b> <small>${esc(bh.target.source)}</small> — ${bh.status === "ok" ? "the project installs ✓" : bh.status === "fixable" ? `<span class="bad">✕ does not install</span> (${esc(bh.before?.error || "")}). <button class="text-link" data-rm-open="B-001">B-001 makes it install and run: ${bh.bumps.map(b => esc(`${b.package} ${b.from} → ${b.to}`)).join(", ")} →</button>` : `<span class="bad">✕</span> ${esc(bh.detail || "")}`}</div>` : "";
+    const nb = (REM.bulk?.items || []).length;
+    const bulk = `<button class="primary-button" id="rm-approve-all" ${nb ? "" : "disabled"} title="Approves the proposal and the tested patch of every fix whose sandbox validation passed, then builds the fixed repository">✓ Approve all validated fixes (${nb})</button>`;
+    return `<div class="queue-strip">${run}<button class="quiet-button" id="rm-validate-all">Validate all with a patch</button>${bulk}</div>${REM.bulkMsg ? `<div class="banner-warn">${esc(REM.bulkMsg)}</div>` : ""}${bhLine}`;
+  }
+  function secTests(st, compact) {
+    const rows = (st.tests || []).map(t => `<div class="st-row ${t.kept ? "" : "dropped"} ${t.kept && !t.as_expected ? "notexp" : ""}"><span class="st-kind"><b>${t.kind}</b><small>${KIND_INFO[t.kind][0]}</small></span><span><b>${esc(t.title)}</b><small><code>${esc(t.name)}</code> · ${t.source === "curated" ? "curated reference exploit" : t.source.startsWith("ai:") ? `written by ${esc(t.source.slice(3))}` : "template (no AI)"}${t.vuln_id ? ` · ${esc(t.vuln_id)}` : ""}</small>${t.note ? `<small class="bad">${esc(t.note)}</small>` : ""}</span><span><small>expected</small>${esc(t.expected)}</span><span><small>before</small>${resMark(t.before)}</span><span><small>after</small>${resMark(t.after)}</span><span>${t.as_expected ? tag("as expected", "green") : t.kept ? tag("NOT as expected", "orange") : tag("dropped", "muted")}</span></div>`).join("");
+    const n = (st.tests || []).filter(t => t.kept).length;
+    return `${compact ? "" : `<p class="muted-small">${n} test${n === 1 ? "" : "s"} kept in <code>${esc(st.file || "")}</code>${st.python ? ` · Python ${esc(st.python)}` : ""}. A test counts only when Guardian <b>ran it on both versions and saw the expected result</b>; T1 and T3 tests that did not behave as expected are dropped, never hidden.</p>`}<div class="st-list">${rows || `<div class="empty-state small">${esc(st.detail || "no tests")}</div>`}</div>${st.code && !compact ? `<details class="vsub"><summary>Test file committed with the fix</summary>${pre(st.code, "code")}</details>` : ""}${!compact && st.after_run?.log ? `<details class="vsub"><summary>pytest output (after)</summary>${pre(st.after_run.log)}</details>` : ""}`;
+  }
+  function buildHealthBox(bh) {
+    return `<p class="plain">The project does not install on <b>Python ${esc(bh.target?.version)}</b> (${esc(bh.target?.source)}). This is <b>not a vulnerability</b>: old pins have no wheel for that Python, so the app cannot be deployed as written. The report keeps it separate from the vulnerability fixes.</p>
+      <div class="vkv"><small>Install before</small><span class="bad">${esc(bh.before?.error || "")}</span></div>
+      ${(bh.bumps || []).map(b => `<div class="vkv"><small>${esc(b.package)} ${esc(b.from)} → ${esc(b.to)}${b.kind === "runtime" ? " · crashed at import" : " · no wheel"}</small><span>${esc(b.why)}</span></div>`).join("")}
+      <div class="vkv"><small>Install after the bumps</small><span class="${bh.after?.ok ? "ok" : "bad"}">${bh.after?.ok ? `✓ installs${bh.after.boot === "healthy" ? " and starts" : ""} on Python ${esc(bh.after.python)}` : esc(bh.detail || "")}</span></div>`;
+  }
+
+  // ------------------------------------------------------------------ page 5: fixed repository
+  const FX = { scan: null, data: null, err: null, timer: null, msg: null, busy: false };
+  async function loadFixed() {
+    if (mode !== "web" || !scanId) return;
+    if (FX.scan !== scanId) { FX.scan = scanId; FX.data = null; }
+    try { FX.data = await remApi("/fixed-repo"); FX.err = null; } catch (e) { FX.err = e.message; }
+    FX.at = Date.now();
+    if (["fixed", "report"].includes(route().view)) render();
+    clearTimeout(FX.timer);
+    if (FX.data?.status === "running" && route().view === "fixed") FX.timer = setTimeout(loadFixed, 2000);
+  }
+  const arrow = (a, b, good) => `<span class="ba"><span>${esc(a ?? "?")}</span><i>→</i><b class="${good ? "ok" : ""}">${esc(b ?? "?")}</b></span>`;
+  function renderFixed() {
+    const head = title("FIXED REPOSITORY", "Fixed <span class='title-suffix'>repository</span>", "The approved fixes combined into one repository, one commit each, then installed, tested, started and rescanned before and after. Download it, or run it.");
+    if (mode !== "web") return head + `<div class="panel empty-big"><p>Needs the Guardian server: <code>python -m guardian.cli web --root output/scans</code></p></div>`;
+    if (FX.scan === scanId && FX.data && Date.now() - (FX.at || 0) > 8000 && FX.data.status !== "running") loadFixed();
+    if (FX.scan !== scanId || (!FX.data && !FX.err)) { loadFixed(); return head + `<div class="panel empty-big"><p>Loading…</p></div>`; }
+    if (FX.err && !FX.data) return head + `<div class="banner-warn">${esc(FX.err)}</div>`;
+    const d = FX.data, inc = d.ready_to_build || [];
+    const buildBtn = `<button class="primary-button" id="fx-build" ${!inc.length || d.status === "running" ? "disabled" : ""}>${d.status === "done" ? "Rebuild fixed repository" : "Build fixed repository"}</button>`;
+    const notInc = (d.not_included || []).length ? `<details class="vsub"><summary>Not included (${d.not_included.length}): not approved, rejected or no code change</summary><div class="fx-list">${d.not_included.map(x => `<div class="fx-row"><span class="mono">${esc(x.rid)}</span><span><b>${esc(x.label)}</b><small>${esc(x.action || "")}</small></span>${riskTag(x.priority)}<small>${esc(x.why)}</small></div>`).join("")}</div></details>` : "";
+    const msg = FX.msg ? `<div class="banner-warn">${esc(FX.msg)}</div>` : "";
+    if (d.status === "none" || (d.status === "failed" && !d.included)) {
+      return head + msg + panel("Ready to build", inc.length ? `${inc.length} approved fix${inc.length > 1 ? "es" : ""} will be combined` : "No approved fix yet", `${d.detail ? `<div class="banner-warn">${esc(d.detail)}</div>` : ""}${inc.length ? `<div class="fx-list">${inc.map(x => `<div class="fx-row"><span class="mono">${esc(x.rid)}</span><b>${esc(x.label)}</b></div>`).join("")}</div>` : `<p class="muted-small">Approve the proposal and then the tested patch of at least one remediation on the ${link("Remediation", 'data-goto="remediate"')} page.</p>`}<div class="act-row">${buildBtn}</div><p class="muted-small">Takes about 3–5 minutes: compose → install before/after on the target Python → all tests before/after → boot check → combined rescan → zip.</p>${notInc}`);
+    }
+    const STEPS = [["compose", "Compose"], ["install", "Install"], ["tests", "Tests"], ["boot", "Boot"], ["rescan", "Rescan"], ["publish", "Publish"]];
+    const seen = new Set((d.steps || []).map(s => s.key)), last = (d.steps || []).slice(-1)[0];
+    const progress = `<div class="fx-steps">${STEPS.map(([k, l]) => `<span class="fx-step ${seen.has(k) ? (d.status === "running" && last?.key === k ? "run" : "done") : ""}">${seen.has(k) && !(d.status === "running" && last?.key === k) ? "✓" : d.status === "running" && last?.key === k ? '<span class="spin"></span>' : "·"} ${l}</span>`).join("<i>→</i>")}</div>`;
+    if (d.status === "running") return head + panel("Building the fixed repository…", esc(last?.msg || "starting"), `${progress}<ol class="val-steps">${(d.steps || []).map(s => `<li>${esc(s.msg)}</li>`).join("")}</ol>`);
+    const s = d.summary || {}, t = d.tests || {}, rs = d.rescan || {}, ins = d.install || {}, bt = d.boot || {};
+    const codeCard = s.code ? `<div class="metric-card"><div class="metric-top"><span>SQL INJECTION IN THE CODE</span></div><div class="metric-value">${arrow(s.code[0], s.code[1], s.code[1] < s.code[0])}</div><div class="metric-foot">sites found by Guardian (CWE-89) · fixed by changing the code</div></div>` : "";
+    const strip = `<div class="metric-grid fx-strip ${s.code ? "five" : ""}">${codeCard}
+      <div class="metric-card"><div class="metric-top"><span>KNOWN VULNERABILITIES</span></div><div class="metric-value">${arrow(s.vulns?.[0], s.vulns?.[1], s.vulns?.[1] < s.vulns?.[0])}</div><div class="metric-foot">${(rs.resolved || []).length} resolved · ${(rs.new || []).filter(n => n.hard).length} new</div></div>
+      <div class="metric-card"><div class="metric-top"><span>CRITICAL / HIGH</span></div><div class="metric-value">${arrow(s.critical_high?.[0], s.critical_high?.[1], s.critical_high?.[1] < s.critical_high?.[0])}</div><div class="metric-foot">by Guardian priority</div></div>
+      <div class="metric-card"><div class="metric-top"><span>TESTS</span></div><div class="metric-value">${arrow(`${s.tests?.project_before ?? "?"}/${s.tests?.project_total ?? "?"}`, `${s.tests?.project_after ?? "?"}/${s.tests?.project_total ?? "?"}`, !s.tests?.regressions)}</div><div class="metric-foot">+ ${s.tests?.new ?? 0} new security tests, ${s.tests?.new_as_expected ?? 0} as expected · <b class="${s.tests?.regressions ? "bad" : "ok"}">${s.tests?.regressions ?? 0} regressions</b></div></div>
+      <div class="metric-card"><div class="metric-top"><span>APP ON PYTHON ${esc(s.python || "")}</span></div><div class="metric-value fx-app"><span class="${s.app_ok?.[0] ? "ok" : "bad"}">${s.app_ok?.[0] ? "✓" : "✕"} ${esc(s.app?.[0] || "")}</span><i>→</i><b class="${s.app_ok?.[1] ? "ok" : "bad"}">${s.app_ok?.[1] ? "✓" : "✕"} ${esc(s.app?.[1] || "")}</b></div><div class="metric-foot">${esc(d.target?.source || "")}</div></div></div>`;
+    const pub = d.publish || {};
+    const dl = `<div class="fx-dl"><a class="primary-button" href="/api/scans/${encodeURIComponent(scanId)}/fixed-repo/download?what=zip">⬇ Download fixed repo (.zip)</a><a class="quiet-button" href="/api/scans/${encodeURIComponent(scanId)}/fixed-repo/download?what=patch">⬇ Download patches</a><span class="fx-branch">branch <code>${esc(pub.branch || "")}</code> <button class="text-link" id="fx-copy" data-copy="${esc(pub.branch || "")}">copy</button><small>${esc((pub.commit || "").slice(0, 8))} · not checked out, not pushed</small></span></div>
+      <pre class="cmd">unzip ${esc(scanId)}-fixed-repo.zip && cd ${esc(d.repo_name || "repo")}-fixed\npip install -r requirements.txt pytest\npytest -m guardian tests/guardian     # Guardian's security tests</pre>
+      ${liveBlock(d)}`;
+    const incl = `<div class="vtable"><div class="vt-head fx"><span>FIX</span><span>WHAT CHANGED</span><span>FINDINGS</span><span>SECURITY TESTS</span><span>COMMIT</span></div>${(d.included || []).map(r => `<button class="vt-row fx" data-rm-jump="${esc(r.rid)}"><span class="mono">${esc(r.rid)}</span><span><b>${esc(r.label)}</b><small>${esc(r.action || "")}</small>${r.kind === "build_health" ? tag("build health", "amber") : ""}</span><span><small>${esc(r.vuln_ids.slice(0, 4).join(", ") || "—")}${r.vuln_ids.length > 4 ? ` +${r.vuln_ids.length - 4}` : ""}</small></span><span>${esc(r.tests_summary)}</span><span class="mono">${esc((r.commit || "").slice(0, 8))}<small>by ${esc(Object.values(r.approvers || {}).join(" / "))}</small></span></button>`).join("")}${(d.skipped || []).map(x => `<div class="vt-row fx skipped"><span class="mono">${esc(x.rid)}</span><span><b>${esc(x.label)}</b></span><span></span><span class="bad">${esc(x.why)}</span><span>skipped</span></div>`).join("")}</div>`;
+    const byFile = new Map();
+    for (const m of t.matrix || []) push(byFile, m.guardian ? m.test.split("::")[0] : "project tests", m);
+    const matrix = [...byFile].map(([f, ms]) => `<details class="vsub"><summary>${esc(f)} · ${ms.filter(m => m.as_expected).length}/${ms.length} as expected</summary><div class="st-list">${ms.map(m => `<div class="st-row ${m.as_expected ? "" : "notexp"}"><span class="st-kind"><b>${esc(m.kind === "project" ? "P" : m.kind)}</b></span><span><code>${esc(m.test.split("::")[1] || m.test)}</code></span><span><small>expected</small>${esc(m.expected)}</span><span><small>before</small>${resMark(m.before)}</span><span><small>after</small>${resMark(m.after)}</span><span>${m.as_expected ? tag("as expected", "green") : tag("NOT as expected", "orange")}</span></div>`).join("")}</div></details>`).join("");
+    const bootRow = (lab, i, b) => `<div class="fx-ba"><b>${lab}</b><span>${i?.ok ? `<span class="ok">✓ installs</span> on Python ${esc(i.python)} <small>(${esc(i.seconds)}s)</small>` : `<span class="bad">✕ does not install</span> on Python ${esc(i?.python || "")}: <code>${esc(i?.error || "")}</code>`}</span><span>${b?.status === "healthy" ? `<span class="ok">✓ running</span>` : `<span class="bad">${esc(b?.status || "")}</span>`} <small>${esc(short(b?.detail || "", 160))}</small></span></div>`;
+    const proof = `<h3 class="fx-h">Install and boot on the target Python ${esc(d.target?.version || "")}</h3>${bootRow("Before", ins.before, bt.before)}${bootRow("After", ins.after, bt.after)}
+      ${(bt.after?.routes || []).length ? `<div class="fx-routes">${bt.after.routes.map(r => `<span class="${(r.status || 0) >= 500 || !r.status ? "bad" : "ok"}"><code>GET ${esc(r.path)}</code> ${esc(r.status || r.error || "")}${r.title ? ` <small>“${esc(short(r.title, 30))}”</small>` : ""}</span>`).join("")}</div>` : ""}
+      ${t.on_target ? `<p class="muted-small">All tests on the target Python ${esc(t.on_target.python)}: ${t.on_target.passed}/${t.on_target.total} pass.</p>` : ""}
+      <h3 class="fx-h">Tests before → after <small>(Python ${esc(t.python || "")}, the same environment for both)</small></h3>${matrix || `<p class="muted-small">No tests ran.</p>`}
+      <h3 class="fx-h">Combined rescan</h3>${rs.error ? `<div class="banner-warn">${esc(rs.error)}</div>` : `<div class="sbom-diff"><span><small>VULNERABILITIES</small>${rs.vulns_before} → ${rs.vulns_after}</span><span><small>SUPPLY-CHAIN FINDINGS</small>${rs.supply_before} → ${rs.supply_after}</span><span><small>RESOLVED</small>${(rs.resolved || []).length}</span><span><small>NEW</small>${(rs.new || []).map(n => tag(`${n.title}${n.hard ? "" : " (metadata only)"}`, n.hard ? "orange" : "muted")).join("") || "none"}</span></div><div class="sbom-diff"><span><small>SBOM CHANGED</small>${(rs.sbom_diff?.changed || []).map(x => tag(x, "blue")).join("") || "—"}</span><span><small>ADDED</small>${(rs.sbom_diff?.added || []).map(x => tag(x, "amber")).join("") || "—"}</span><span><small>REMOVED</small>${(rs.sbom_diff?.removed || []).map(x => tag(x, "orange")).join("") || "—"}</span></div>`}
+      <details class="vsub"><summary>Build log</summary><ol class="val-steps">${(d.steps || []).map(x => `<li>${esc(x.msg)}</li>`).join("")}</ol></details>`;
+    return head + msg + (d.status === "failed" ? `<div class="banner-warn"><b>The last build failed:</b> ${esc(d.detail || "")}</div>` : "") + (d.stale ? `<div class="banner-warn">More fixes were approved since this build. <b>Rebuild</b> to include them.</div>` : "") + strip
+      + panel("Download and run", `${pub.commits || 0} commits on top of ${esc((d.head || "").slice(0, 8))} · GUARDIAN_FIXES.md included`, dl, buildBtn)
+      + panel("Included fixes", "One commit per fix, with its security tests. Click one to open it on the Remediation page.", incl + notInc)
+      + panel("Proof", "Everything below was run by Guardian, before and after", proof);
+  }
+  function liveBlock(d) {
+    if (!d || d.status !== "done") return "";
+    const row = (which, lab, cfg, cls) => {
+      const live = (d.live || {})[which];
+      const head = `<span class="lv-lab ${cls}">${lab}</span>`;
+      if (live) return `<div class="lv-row">${head}<span class="live-dot ${cls}"></span><a href="${esc(live.url)}" target="_blank" rel="noopener">${esc(live.url)} ↗</a><small>Python ${esc(live.python)} · stops by itself after ${live.stops_after_min} min</small><button class="quiet-button danger" data-fx-stop="${which}">Stop</button></div>`;
+      return `<div class="lv-row">${head}<button class="${which === "after" ? "primary-button" : "quiet-button"}" data-fx-run="${which}" ${cfg ? "" : "disabled"}>▶ Run ${which === "after" ? "fixed" : "original (vulnerable)"} app</button><small>${cfg ? esc(cfg.note || `Python ${cfg.python}`) : "not available"}</small></div>`;
+    };
+    return `<div class="fx-live"><div class="detail-label">SEE IT LIVE · BOTH VERSIONS SIDE BY SIDE${FX.busy ? ' <span class="spin"></span>' : ""}</div>${row("before", "BEFORE", d.run_before, "vuln")}${row("after", "AFTER", d.run, "fixed")}<p class="muted-small">Each version runs from its own sandbox copy with a temporary SQLite database on 127.0.0.1; nothing is exposed outside this machine.</p></div>`;
+  }
+  function bindFixed() {
+    document.querySelector("#fx-build")?.addEventListener("click", async () => { FX.msg = null; try { FX.data = await remApi("/fixed-repo", { method: "POST" }); } catch (e) { FX.msg = e.message; } loadFixed(); });
+    app.querySelectorAll("[data-fx-run]").forEach(el => el.addEventListener("click", async () => { FX.busy = true; FX.msg = null; render(); try { await remApi(`/fixed-repo/run?which=${el.dataset.fxRun}`, { method: "POST" }); } catch (e) { FX.msg = e.message; } FX.busy = false; loadFixed(); }));
+    app.querySelectorAll("[data-fx-stop]").forEach(el => el.addEventListener("click", async () => { await remApi(`/fixed-repo/run?which=${el.dataset.fxStop}`, { method: "DELETE" }).catch(() => 0); loadFixed(); }));
+    document.querySelector("#fx-copy")?.addEventListener("click", e => { navigator.clipboard?.writeText(e.target.dataset.copy); e.target.textContent = "copied"; });
+    app.querySelectorAll("[data-rm-jump]").forEach(el => el.addEventListener("click", () => go("remediate", "", { tab: "all", open: el.dataset.rmJump })));
+    document.querySelector("#rm-approve-all")?.addEventListener("click", async () => {
+      const items = REM.bulk?.items || [];
+      if (!items.length) return;
+      const ok = confirm(`Approve ${items.length} validated fix(es) as "${reviewer()}"?\n\n` + items.map(i => `${i.rid}  ${i.action || i.label}  (validation ${i.validation})`).join("\n")
+        + "\n\nEach gets both approvals (proposal + tested patch). Fixes that failed validation are not included and still need your decision. Then the fixed repository is built.");
+      if (!ok) return;
+      try {
+        await remApi("/bulk-approve", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reviewer: reviewer(), build: true }) });
+        REM.bulkMsg = `Approving ${items.length} fix(es)… the fixed repository build starts right after.`; render();
+        const t0 = Date.now();
+        while (Date.now() - t0 < 120000) {
+          await new Promise(r => setTimeout(r, 1500));
+          const f = await remApi("/fixed-repo").catch(() => null);
+          if (f?.status === "running") { REM.bulkMsg = null; FX.scan = null; go("fixed"); return; }
+        }
+        REM.bulkMsg = null; loadRem();
+      } catch (e) { REM.bulkMsg = e.message; render(); }
+    });
+    document.querySelector("#rm-validate-all")?.addEventListener("click", async () => { try { REM.queue = await remApi("/remediations/validate-all", { method: "POST" }); } catch (e) { REM.msg = e.message; } loadRem(); });
+  }
+
+  // ------------------------------------------------------------------ page 6: report
+  const RP = { scan: null, data: null, err: null };
+  async function loadReport() {
+    try { RP.data = await remApi("/remediation-report"); RP.err = null; } catch (e) { RP.err = e.message; }
+    RP.at = Date.now();
+    if (route().view === "report") render();
+  }
+  function renderReport() {
+    const dl = mode === "web" ? `<div class="act-row"><a class="primary-button" href="/api/scans/${encodeURIComponent(scanId)}/remediation-report/download?format=html">⬇ Download report (HTML)</a><a class="quiet-button" href="/api/scans/${encodeURIComponent(scanId)}/remediation-report/download?format=md">Markdown</a></div>` : "";
+    const head = title("REPORT", "Remediation <span class='title-suffix'>report</span>", "One page for a security lead: what was fixed, how it was checked, and what risk remains.", dl);
+    if (mode !== "web") return head + `<div class="panel empty-big"><p>Needs the Guardian server.</p></div>`;
+    if (RP.scan === scanId && RP.data && Date.now() - (RP.at || 0) > 8000) loadReport();
+    if (RP.scan !== scanId) { RP.scan = scanId; RP.data = null; loadReport(); return head + `<div class="panel empty-big"><p>Building the report…</p></div>`; }
+    if (RP.err) return head + `<div class="banner-warn">${esc(RP.err)}</div>`;
+    if (!RP.data) return head + `<div class="panel empty-big"><p>Building the report…</p></div>`;
+    const r = RP.data, h = r.header;
+    const tbl = (cols, rows) => `<table class="rp-table"><tr>${cols.map(c => `<th>${c}</th>`).join("")}</tr>${rows.map(x => `<tr>${x.map(c => `<td>${c}</td>`).join("")}</tr>`).join("")}</table>`;
+    const tm = x => (x.tests || []).map(t => `<span class="tres ${t.as_expected ? "ok" : "bad"}">${t.kind} ${esc(t.before)}→${esc(t.after)}</span>`).join(" ") || "—";
+    return head + `<section class="panel rp">
+      <div class="rp-meta">${esc(h.repo || "")} ${h.repo_url ? `· <a href="${esc(h.repo_url.replace(/\.git$/, ""))}" target="_blank" rel="noopener">${esc(h.repo_url.replace(/^https:\/\//, "").replace(/\.git$/, ""))}</a>` : ""} · commit <code>${esc(h.commit_before)}</code> → ${h.fixed_branch ? `branch <code>${esc(h.fixed_branch)}</code>` : "no fixed branch yet"} · approved by ${esc((h.approvers || []).join(", ") || "—")}</div>
+      <div class="rp-verdict">${esc(h.verdict)}</div>
+      ${FX.scan === scanId && FX.data ? liveBlock(FX.data) : (loadFixed(), "")}${FX.msg ? `<div class="banner-warn">${esc(FX.msg)}</div>` : ""}
+      ${r.before_after.length ? `<h3>Before → after</h3>${tbl(["", "Before", "After"], r.before_after.map(x => [esc(x.what), esc(x.before ?? "—"), `<b>${esc(x.after ?? "—")}</b>`]))}` : ""}
+      <h3>What Guardian fixed</h3>${r.fixed.length ? tbl(["Fix", "Findings", "Priority · why", "Tests", "Fix confidence", "Approved by"], r.fixed.map(x => [`<b>${esc(x.rid)}</b> ${esc(x.action)}`, `<small>${esc(x.vuln_ids.join(", "))}</small>`, `${riskTag(x.priority)}<br><small>${esc(x.why)}</small>`, tm(x), esc(x.fix_confidence || ""), esc(Object.values(x.approvers || {}).join(" / "))])) : `<p class="muted-small">None yet.</p>`}
+      ${r.build_health.length ? `<h3>Build health <small>(not vulnerability fixes)</small></h3><p class="muted-small">${esc(r.build_health_note)}</p>${tbl(["Fix", "Tests", "Approved by"], r.build_health.map(x => [`<b>${esc(x.rid)}</b> ${esc(x.action)}`, tm(x), esc(Object.values(x.approvers || {}).join(" / "))]))}` : ""}
+      <h3>Remaining and accepted risk</h3>${r.remaining.length ? tbl(["Item", "Priority", "Status", "Reason"], r.remaining.map(x => [`<b>${esc(x.rid)}</b> ${esc(x.label)}<br><small>${esc(x.findings.join(", "))}</small>`, riskTag(x.priority), esc(x.status), esc(x.reason || "") + (x.by ? ` <small>(${esc(x.by)})</small>` : "")])) : `<p class="muted-small">Nothing remaining.</p>`}
+      ${r.new_findings.length ? `<p class="muted-small"><b>New in the rescan:</b> ${r.new_findings.map(n => esc(`${n.title} (${n.risk}${n.hard ? "" : ", metadata only, needs a look"})`)).join("; ")}</p>` : ""}
+      ${r.test_matrix.length ? `<h3>Test evidence</h3><details class="vsub"><summary>${r.test_matrix.length} tests, before → after</summary>${tbl(["Test", "Expected", "Before", "After", ""], r.test_matrix.map(m => [`<code>${esc(m.test)}</code>`, esc(m.expected), resMark(m.before), resMark(m.after), m.as_expected ? tag("as expected", "green") : tag("NOT as expected", "orange")]))}</details>` : ""}
+      <h3>Audit trail</h3><details class="vsub"><summary>${r.audit.length} events: proposals, decisions, validations, commits</summary>${tbl(["When", "Item", "Event"], r.audit.map(a => [`<small>${esc((a.at || "").replace("T", " ").replace("Z", ""))}</small>`, esc(a.rid || ""), `${esc((a.event || "").replace(/_/g, " "))} <small>${esc(a.text)}</small>`]))}</details>
+      <h3>How it was checked</h3><ol class="rp-methods">${r.methods.map(m => `<li>${esc(m)}</li>`).join("")}</ol></section>`;
+  }
 
   // ------------------------------------------------------------------ new scan + progress (guardian web)
   function renderNewScan() {
@@ -792,6 +1081,7 @@
     app.querySelectorAll("[data-example]").forEach(el => el.addEventListener("click", () => { document.querySelector("#scan-input").value = el.dataset.example; }));
     document.querySelector("#scan-form")?.addEventListener("submit", submitScan);
     if (r) bindRem(r);
+    bindFixed();
     document.querySelector("#cdx-download")?.addEventListener("click", downloadCdx);
     const sq = document.querySelector("#sbom-q");
     if (sq) { let t; sq.addEventListener("input", () => { clearTimeout(t); t = setTimeout(() => { go("architecture", "sbom", { q: sq.value, f: r.p.get("f"), sel: r.p.get("sel") }); setTimeout(() => { const n = document.querySelector("#sbom-q"); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } }, 0); }, 250); }); }
@@ -846,7 +1136,7 @@
       if (!res.ok) throw new Error();
       scans = await res.json(); mode = "web";
       document.body.classList.add("mode-web");
-      const pick = scans.find(s => s.scan_id === scanId) || scans.find(s => s.status === "done");
+      const pick = scans.find(s => s.scan_id === scanId) || scans.find(s => s.pinned && s.status === "done") || scans.find(s => s.status === "done");
       if (!pick) { data = null; setPill("NO SCAN"); if (!location.hash.includes("progress")) location.hash = "#/scan"; return render(); }
       scanId = pick.scan_id;
       if (pick.status === "running") { data = null; setPill("SCANNING"); location.hash = `#/progress?id=${encodeURIComponent(scanId)}`; return render(); }

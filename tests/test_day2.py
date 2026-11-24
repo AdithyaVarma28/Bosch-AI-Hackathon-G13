@@ -77,9 +77,42 @@ def test_fix_confidence_rules():
                                                                     "security_check": {"status": "pass"}}}
     assert fix_confidence({**base, "edits": []})[0] == "low"
     assert fix_confidence(base)[0] == "medium"                                       # not validated, no critic
-    assert fix_confidence(base, {"status": "passed", "checks": {}})[0] == "high"
+    # a sandbox where nothing executed the code is not enough for high
+    lvl, why = fix_confidence(base, {"status": "passed", "checks": {}})
+    assert lvl == "medium" and "nothing executed" in why[0]
+    tested = {"status": "passed", "checks": {"tests": {"status": "pass"}}, "tests": {"after": {"passed": 4}}}
+    assert fix_confidence(base, tested)[0] == "high"
+    probed = {"status": "passed", "checks": {"proof_of_fix": {"status": "pass"}}}
+    assert fix_confidence(base, probed)[0] == "high"
     bad = {**base, "checks": {**base["checks"], "ai_critic": {"status": "fail"}}}
     assert fix_confidence(bad)[0] == "low"
+    # an inconclusive probe never blocks, a failed install does
+    assert fix_confidence(base, {"status": "passed", "checks": {"proof_of_fix": {"status": "unknown"}, "tests": {"status": "pass"}},
+                                 "tests": {"after": {"passed": 1}}})[0] == "high"
+    assert fix_confidence(base, {"status": "failed", "checks": {"install": {"status": "fail"}}})[0] == "low"
+
+
+def test_runtime_helpers(tmp_path):
+    from guardian.day2.runtime import _conflicts, _subject, discover_tests
+    (tmp_path / "tests.py").write_text("")                 # unittest file pytest would not collect by default
+    (tmp_path / "pkg").mkdir()
+    (tmp_path / "pkg" / "test_a.py").write_text("")
+    (tmp_path / ".venv").mkdir()
+    (tmp_path / ".venv" / "test_x.py").write_text("")
+    assert discover_tests(tmp_path) == ["pkg/test_a.py", "tests.py"]
+    out = "Using Python 3.11\nThe package `pytest` requires `packaging>=24`, but `23.2` is installed\nflask 3.0 has requirement werkzeug>=3, but you have werkzeug 2.0.\n"
+    lines = _conflicts(out)
+    assert len(lines) == 2 and _subject(lines[0]) == "pytest" and _subject(lines[1]) == "flask"
+
+
+def test_probe_safety_check():
+    from guardian.day2.probe import safety_check
+    ok = "from werkzeug.security import safe_join\nprint('GUARDIAN_PROBE: ' + ('VULNERABLE' if safe_join('/a', 'NUL') else 'SAFE'))"
+    assert safety_check(ok)[0]
+    assert not safety_check("import subprocess\nprint('GUARDIAN_PROBE: SAFE')")[0]
+    assert not safety_check("import os\nos.system('x')\nprint('GUARDIAN_PROBE: SAFE')")[0]
+    assert not safety_check("import werkzeug\nprint('GUARDIAN_PROBE: SAFE' if werkzeug.__version__ else '')")[0]
+    assert not safety_check("print('hello')")[0]                        # no verdict line
 
 
 # ------------------------------------------------------------------ full fixture
@@ -154,7 +187,10 @@ def test_approve_validate_apply_end_to_end(scan):
     assert v["checks"]["rescan_resolved"]["status"] == "pass"
     assert any("reqeusts" in x for x in v["rescan"]["sbom_diff"]["removed"])
     assert u["status"] == "awaiting_patch_review"
-    assert u["proposals"][-1]["fix_confidence"] == "high"
+    # offline fixture: no dependency install, no test ran, no probe -> the rescan alone gives medium, not high
+    p = u["proposals"][-1]
+    assert v["checks"]["install"]["status"] == "skipped"
+    assert p["fix_confidence"] == ("high" if v["checks"].get("tests", {}).get("status") == "pass" else "medium"), p["fix_confidence_reasons"]
     assert subprocess.run(["git", "-C", str(repo), "status", "--porcelain"], capture_output=True, text=True).stdout == ""
     u = submit(d, rid, {"stage": "patch", "action": "approve", "reviewer": "t"}, background=False)
     assert u["status"] == "applied" and u["applied"]["branch"].startswith("guardian/fix-")

@@ -28,6 +28,19 @@ def run_day2(out: str | Path, repo: Optional[str | Path] = None, llm=None, offli
 
     register = run_prioritize(out, llm, log=log)
     units = build_units(out, register)
+    # code-level findings in the application's own code (SQL injection), fixed by changing the code
+    try:
+        from .codefix import code_units
+        from .common import REGISTER_FILE as _RF, repo_path as _rp
+        if _rp(out) is not None:
+            regs, cunits = code_units(out, _rp(out))
+            if cunits:
+                register = register + regs
+                write_json(out / _RF, register)
+                units = sorted(cunits + units, key=lambda u: (-band_idx(u["priority"]), min(u["ranks"])))
+                log(f"day2: {len(cunits)} code-level finding(s) (SQL injection) with a code fix")
+    except Exception as exc:          # never block the plan on it
+        log(f"day2: code-level check failed: {type(exc).__name__}: {exc}")
     meta = read_json(out / "scan.json", {}) or {}
     sid = meta.get("scan_id") or out.name
     import time
@@ -46,6 +59,13 @@ def run_day2(out: str | Path, repo: Optional[str | Path] = None, llm=None, offli
     mgr = WorkflowManager.for_dir(out)
     for u in units:
         mgr.start(u, use_agent=use_agent and band_idx(u["priority"]) >= band_idx("high"))
+    if not offline and os.environ.get("GUARDIAN_BUILD_HEALTH", "1") != "0":
+        try:                       # does the project install on its target Python? (adds a "build health" fix)
+            from .candidates import add_build_health
+            bh = add_build_health(out, log=log, force=True)
+            log(f"day2: build health on Python {(bh.get('target') or {}).get('version')}: {bh.get('status')} — {bh.get('detail')}")
+        except Exception as exc:   # never block the plan on it
+            log(f"day2: build health check failed: {type(exc).__name__}: {exc}")
     final = read_json(out / REMEDIATIONS_FILE, []) or []
     tabs = {t: sum(1 for u in final if u.get("tab") == t) for t in ("decide", "ready", "auto", "unresolved")}
     log(f"day2: {len(final)} remediations ({tabs['decide']} need a decision, {tabs['ready']} ready, "

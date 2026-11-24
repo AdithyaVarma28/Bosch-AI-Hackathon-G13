@@ -124,7 +124,8 @@ class Toolbox:
 
 
 def make_llm(out: Path, large: bool):
-    from guardian.stage3_knowledge.llm import LLM
+    from guardian.stage3_knowledge.llm import LLM, _load_dotenv
+    _load_dotenv()                    # GROQ_API_KEY may only be in .env: load it before choosing the large model
     model = None
     if large:
         model = os.environ.get("GUARDIAN_MODEL_LARGE") or (DEFAULT_LARGE if os.environ.get("GROQ_API_KEY") else None)

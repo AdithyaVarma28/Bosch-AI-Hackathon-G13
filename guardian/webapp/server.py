@@ -508,6 +508,10 @@ def create_web_app(root: str | Path):
     # ------------------------------------------------------------------ Day 2: prioritize, remediate, approve
     from guardian.day2.api import attach as attach_day2
     attach_day2(app, lambda sid: data(sid).d)
+    from guardian.day2.api import attach_finish
+    attach_finish(app, lambda sid: data(sid).d)
+    from guardian.day2.api import attach_bulk
+    attach_bulk(app, lambda sid: data(sid).d)
 
     # ------------------------------------------------------------------ dashboard (ui/) + SPA
     if UI_DIR.exists():

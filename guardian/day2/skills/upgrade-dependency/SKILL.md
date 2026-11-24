@@ -1,7 +1,7 @@
 ---
 name: upgrade-dependency
 description: Move a vulnerable or suspicious Python package to a safe version (upgrade to a fixed release, or pin back to the last trusted one) in requirements files and poetry.lock.
-allowed_files: requirements*.txt, poetry.lock, pyproject.toml, setup.cfg, setup.py
+allowed_files: requirements*.txt, poetry.lock, pyproject.toml, setup.cfg, setup.py, tests/guardian/*
 ---
 # Upgrade (or pin back) a dependency
 

@@ -759,8 +759,20 @@ def _build(out: Path, meta: dict) -> dict:
                                                                      "status", "severity")}}
                  for i, f in enumerate(bundle.get("findings", []))]
 
+    # code-level findings from Guardian's code analysis (Day 2 register): SQL injection in the app's own code
+    code = []
+    for e in _read(out / "register.json", []) or []:
+        if isinstance(e, dict) and e.get("kind") == "code":
+            s0 = (e.get("sites") or [{}])[0]
+            code.append({"id": e["finding_id"], "kind": "code", "risk": e.get("priority"), "title": e.get("title"),
+                         "cwe": e.get("vuln_id"), "file": s0.get("file"), "line": s0.get("line"), "function": s0.get("function"),
+                         "sql": s0.get("sql"), "fixed_sql": s0.get("new_sql"), "old": s0.get("old"), "new": s0.get("new"),
+                         "sites": [f"{x.get('file')}:{x.get('line')}" for x in e.get("sites") or []],
+                         "reasons": e.get("priority_reasons") or [], "componentName": f"{s0.get('function')}() in {s0.get('file')}",
+                         "component": f"code:{s0.get('file')}", "capability": e.get("title")})
     allr = vrows + arows
     security = {
+        "code": code,
         "vulnerabilities": vrows, "anomalies": arows, "hotspots": hotspots, "recent": recent[:12], "notes": dep_notes,
         "byRisk": {r: sum(1 for x in allr if x["risk"] == r) for r in ("critical", "high", "medium", "low")},
         "reachable": sum(1 for v in vrows if v["usage"] == "symbol_called"),

@@ -296,5 +296,31 @@ def demo(
     typer.echo(f"demo scans ready in {root}: run `guardian web --root {root}`")
 
 
+@app.command("demo-check")
+def demo_check(
+    url: str = typer.Argument(..., help="GitHub link of a candidate demo repository"),
+    root: str = typer.Option("output/scans", "--root", help="Where the scan snapshots are stored"),
+    approve: int = typer.Option(4, "--approve", help="How many validated vulnerability fixes to approve (build health is always approved)"),
+    runs: int = typer.Option(1, "--runs", help="Run the whole flow this many times (the plan asks for 2 passes in a row)"),
+    llm: str = typer.Option("offline", "--llm", help="offline (default) | auto | groq …: AI for the scan and probes"),
+) -> None:
+    """Run the full flow (scan → plan → validate → approve → fixed repo → report) headless on a GitHub link and
+    print the demo-repository criteria table (docs/DAY_2_COMPLETION_PLAN.md section 3.1)."""
+    import json as _json
+
+    from guardian.day2.democheck import run as run_check, table
+
+    results = []
+    for i in range(runs):
+        typer.echo(f"== run {i + 1} of {runs}")
+        res = run_check(url, Path(root), approve=approve, llm=llm, log=typer.echo)
+        results.append(res)
+        typer.echo(table(res))
+    if runs > 1:
+        ok = all(all(c["ok"] for c in r.get("criteria") or []) for r in results)
+        typer.echo(f"stable: {'yes' if ok else 'no'} ({runs} runs, all criteria passing in every run: {ok})")
+    Path(root, "demo_check_last.json").write_text(_json.dumps(results, indent=2, default=str), encoding="utf-8")
+
+
 if __name__ == "__main__":
     app()

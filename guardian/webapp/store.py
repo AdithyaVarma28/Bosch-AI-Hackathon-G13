@@ -91,6 +91,10 @@ class ScanStore:
                     out.append(self.meta(d.name))
                 except KeyError:
                     continue
+        pin = (_read(self.root / "demo.json", {}) or {}).get("scan_id")     # the scan the dashboard opens first
+        for m in out:
+            m["pinned"] = m["scan_id"] == pin
+        out.sort(key=lambda m: not m["pinned"])
         return out
 
     # ------------------------------------------------------------------ events

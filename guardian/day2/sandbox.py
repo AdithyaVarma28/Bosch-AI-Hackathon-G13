@@ -1,8 +1,10 @@
 """Phase B: validate a proposal in an isolated git worktree (docs/DAY_2_PLAN.md section 6).
 
-worktree at HEAD -> baseline tests -> apply the edits -> build (byte-compile + manifest/lockfile/workflow parse,
-optional pip install) -> tests again -> commit inside the worktree -> full Guardian rescan of the worktree ->
-compare findings and SBOM. The user's working copy is never touched; a branch is created only after patch approval."""
+worktree at HEAD -> throwaway venv with the project's real dependencies (before the patch) -> baseline tests ->
+apply the edits -> build (byte-compile + manifest/lockfile/workflow parse) -> install the patched dependencies +
+pip check -> tests again -> proof-of-fix probes (old vs new version) -> commit inside the worktree -> full Guardian
+rescan of the worktree -> compare findings and SBOM. The user's working copy is never touched; a branch is created
+only after patch approval."""
 from __future__ import annotations
 
 import os
@@ -15,6 +17,7 @@ import time
 from pathlib import Path
 from typing import Callable, Optional
 
+from . import runtime
 from .common import load_config, now, read_json, repo_path
 from .patches import PatchError, apply_edits
 
@@ -36,20 +39,7 @@ def is_git(repo: Optional[Path]) -> bool:
     return bool(repo) and _run(["git", "-C", str(repo), "rev-parse", "--is-inside-work-tree"], timeout=20)[0] == 0
 
 
-def run_tests(wt: Path) -> dict:
-    if not any(wt.glob("test*")) and not any(wt.rglob("test_*.py")):
-        return {"status": "n/a", "summary": "no tests in the repository", "failed": 0, "passed": 0}
-    code, out = _run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "--no-header"], cwd=wt, timeout=240)
-    if "No module named pytest" in out:
-        return {"status": "n/a", "summary": "pytest is not installed", "failed": 0, "passed": 0}
-    passed = sum(int(x) for x in re.findall(r"(\d+) passed", out))
-    failed = sum(int(x) for x in re.findall(r"(\d+) (?:failed|error)", out))
-    last = [l for l in out.strip().splitlines() if l.strip()][-1:] or [""]
-    return {"status": "ok" if code == 0 else "failing", "code": code, "passed": passed, "failed": failed,
-            "summary": last[0][:200], "log": out[-3000:]}
-
-
-def build(wt: Path, changed: list[str], cfg: dict) -> dict:
+def build(wt: Path, changed: list[str]) -> dict:
     notes, errors = [], []
     py = [f for f in changed if f.endswith(".py")]
     code, out = _run([sys.executable, "-m", "compileall", "-q", str(wt)], timeout=180)
@@ -82,18 +72,7 @@ def build(wt: Path, changed: list[str], cfg: dict) -> dict:
             notes.append(f"{wf} is valid YAML")
         except Exception as exc:
             errors.append(f"{wf} is not valid YAML: {exc}")
-    install = {"status": "skipped", "detail": "dependency install skipped (set GUARDIAN_SANDBOX_INSTALL=1 to pip-install "
-                                             "into a throwaway venv)"}
-    if os.environ.get("GUARDIAN_SANDBOX_INSTALL") == "1" and not cfg.get("offline"):
-        venv = wt.parent / (wt.name + "-venv")
-        c1, o1 = _run([sys.executable, "-m", "venv", str(venv)], timeout=180)
-        pip = venv / ("Scripts" if os.name == "nt" else "bin") / "pip"
-        reqs = [x for x in ("requirements.txt",) if (wt / x).exists()]
-        c2, o2 = (_run([str(pip), "install", "-q", "-r", reqs[0]], cwd=wt, timeout=600) if c1 == 0 and reqs else (c1, o1))
-        install = {"status": "pass" if c2 == 0 else "fail", "detail": (o2 or "installed")[-400:]}
-        if c2 != 0:
-            errors.append("pip install failed")
-    return {"status": "fail" if errors else "pass", "detail": "; ".join(errors or notes), "install": install}
+    return {"status": "fail" if errors else "pass", "detail": "; ".join(errors or notes)}
 
 
 def _keys(cards: list[dict]) -> dict[tuple, dict]:
@@ -112,7 +91,36 @@ def _sbom(d: Path) -> dict[str, str]:
     return {n["name"]: n.get("version") for n in g.get("nodes", []) if n.get("type") == "Package" and n.get("name")}
 
 
-def compare(out: Path, rescan: Path, unit: dict) -> dict:
+def card_package(c: dict) -> str:
+    m = re.match(r"pkg:pypi/([^@]+)@", c.get("component") or "")
+    return re.sub(r"[-_.]+", "-", (m.group(1) if m else (c.get("component_name") or "")).lower())
+
+
+def is_hard(c: dict, intended: set) -> bool:
+    """A new finding that blocks a fix: a CVE, or harmful behaviour that the fix did not ask for. The code diff of
+    the very package the fix upgraded on purpose ("new_behaviour_in_update") is expected to change: it is shown
+    as "needs a look", not as a failure. Install-time behaviour (install hooks) always blocks."""
+    if c.get("type") == "vulnerability":
+        return True
+    for s in c.get("signals") or []:
+        if s.get("behaviour") and s.get("strength") == "strong":
+            if s.get("check") == "new_behaviour_in_update" and card_package(c) in intended:
+                continue
+            return True
+    return False
+
+
+def intended_packages(unit: dict, proposal: Optional[dict] = None) -> set:
+    names = set()
+    m = re.match(r"pkg:pypi/([^@]+)@", unit.get("target") or "")
+    if m:
+        names.add(m.group(1))
+    for b in (proposal or {}).get("bumps") or []:
+        names.add(b["package"])
+    return {re.sub(r"[-_.]+", "-", n.lower()) for n in names}
+
+
+def compare(out: Path, rescan: Path, unit: dict, proposal: Optional[dict] = None) -> dict:
     before_cards = (read_json(out / "vuln_findings.json", []) or []) + (read_json(out / "anomaly_findings.json", []) or [])
     after_cards = (read_json(rescan / "vuln_findings.json", []) or []) + (read_json(rescan / "anomaly_findings.json", []) or [])
     b, a = _keys(before_cards), _keys(after_cards)
@@ -126,21 +134,55 @@ def compare(out: Path, rescan: Path, unit: dict) -> dict:
                               "usage_before": bc.get("usage") or bc.get("exposure"), "usage_after": ac.get("usage") or ac.get("exposure"),
                               "signals_before": sorted({s.get("check") for s in bc.get("signals") or []}),
                               "signals_after": sorted({s.get("check") for s in ac.get("signals") or []})})
-    new = [{"title": a[k].get("title"), "risk": a[k].get("project_risk"), "type": a[k].get("type")}
-           for k in a if k not in b]
+    new = []
+    for k in a:
+        if k in b:
+            continue
+        c = a[k]
+        sig = [{"check": s.get("check"), "strength": s.get("strength"), "behaviour": bool(s.get("behaviour")),
+                "text": s.get("text")} for s in c.get("signals") or []]
+        # a CVE, or harmful behaviour the fix did not ask for, is a real new problem; metadata-only change signals
+        # and the code diff of the package the fix upgraded on purpose need a human look but are not proof of harm
+        hard = is_hard(c, intended_packages(unit, proposal))
+        expected = not hard and any(s["check"] == "new_behaviour_in_update" for s in sig)
+        new.append({"title": c.get("title"), "risk": c.get("project_risk"), "type": c.get("type"),
+                    "finding_id": c.get("finding_id"), "signals": sig[:6], "hard": hard, "expected_change": expected})
     sb, sa = _sbom(out), _sbom(rescan)
     sbom = {"added": sorted(f"{n} {v}" for n, v in sa.items() if n not in sb),
             "removed": sorted(f"{n} {v}" for n, v in sb.items() if n not in sa),
             "changed": sorted(f"{n} {sb[n]} → {sa[n]}" for n in sa if n in sb and sa[n] != sb[n])}
+    m = re.match(r"pkg:pypi/([^@]+)@", unit.get("target") or "")
+    pkg = m.group(1).lower() if m else None
+    target_after = sorted({c.get("vuln_id") for c in after_cards if pkg and c.get("type") == "vulnerability"
+                           and (c.get("component_name") or "").lower() == pkg})
+    # sanity: vulnerabilities in packages the patch did not touch must still be there; if the rescan lost all of
+    # them it had no vulnerability data (offline, no dump) and cannot show anything as resolved
+    untouched = {(c.get("component_name") or "").lower() for c in before_cards
+                 if c.get("type") == "vulnerability" and (c.get("component_name") or "").lower() != pkg}
+    vulns_after = [c for c in after_cards if c.get("type") == "vulnerability"]
     return {"resolved": resolved, "remaining": remaining, "new": new, "sbom_diff": sbom,
-            "before_total": len(before_cards), "after_total": len(after_cards)}
+            "before_total": len(before_cards), "after_total": len(after_cards),
+            "vulns_before": sum(1 for c in before_cards if c.get("type") == "vulnerability"), "vulns_after": len(vulns_after),
+            "package": pkg, "package_vulns_after": target_after,
+            "no_vuln_data": bool(untouched) and not vulns_after}
+
+
+def effective_offline(out: Path, cfg: dict) -> bool:
+    """Validate like the original scan: if that scan used the network (OSV, PyPI), so does the rescan, even when
+    the Day 2 plan was regenerated with --offline. Comparing an online scan with an offline rescan makes every
+    vulnerability look resolved."""
+    meta = read_json(Path(out) / "scan.json", {}) or {}
+    if cfg.get("offline") and meta.get("offline") is False and not cfg.get("osv_dump"):
+        return False
+    return bool(cfg.get("offline"))
 
 
 def validate(out: Path, unit: dict, proposal: dict, log: Callable[[str], None] = lambda m: None) -> dict:
     out = Path(out)
     cfg = load_config(out)
+    cfg["offline"] = effective_offline(out, cfg)
     repo = repo_path(out)
-    v = {"status": "running", "started_at": now(), "checks": {}, "steps": []}
+    v = {"status": "running", "started_at": now(), "checks": {}, "steps": [], "offline": bool(cfg.get("offline"))}
 
     def step(msg):
         v["steps"].append({"at": now(), "msg": msg})
@@ -161,8 +203,31 @@ def validate(out: Path, unit: dict, proposal: dict, log: Callable[[str], None] =
         return v
     v["worktree"] = str(wt)
     step(f"isolated worktree created at HEAD ({wt.name}); your working copy is untouched")
-    base_tests = run_tests(wt)
-    step(f"baseline tests: {base_tests['summary']}")
+    work = root / f"{wt.name}-env"            # venvs live next to the worktree, never inside it
+    work.mkdir(parents=True, exist_ok=True)
+    try:
+        return _validate_in(out, unit, proposal, cfg, wt, work, v, step)
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def _validate_in(out: Path, unit: dict, proposal: dict, cfg: dict, wt: Path, work: Path, v: dict, step) -> dict:
+    # 1. the project's real dependencies, as they are before the patch
+    can_install, why_not = runtime.install_enabled(cfg)
+    env, env_info = None, {"detail": why_not}
+    if can_install:
+        env, env_info = runtime.make_project_env(wt, work / "venv", step)
+        if env is not None:
+            env_info["pip_check_before"] = runtime.pip_check(env).get("conflicts", [])
+            runtime.ensure_pytest(env)
+            step(f"dependencies installed on Python {env.full_version} ({len(env_info.get('requirements') or [])} requirement file(s))")
+        else:
+            step(f"dependency install failed: {env_info.get('detail')}")
+    v["env"] = env_info
+    test_files = runtime.discover_tests(wt)
+    base_tests = runtime.run_tests(wt, env, test_files)
+    step(f"baseline tests (before the patch): {base_tests['summary']}")
+    # 2. the patch
     try:
         files = apply_edits(wt, proposal["edits"], write=True)
     except PatchError as exc:
@@ -170,21 +235,107 @@ def validate(out: Path, unit: dict, proposal: dict, log: Callable[[str], None] =
         v["checks"]["build"] = {"status": "fail", "detail": str(exc)}
         return v
     step(f"patch applied: {', '.join(files)}")
-    b = build(wt, list(files), cfg)
+    b = build(wt, list(files))
     v["checks"]["build"] = {"status": b["status"], "detail": b["detail"]}
-    v["install"] = b["install"]
     step(f"build: {b['status']} — {b['detail'][:160]}")
-    after_tests = run_tests(wt)
+    # 3. install the patched dependency set into a SECOND venv on the same Python (the before venv stays as it was,
+    #    so Guardian's security tests can run on both) + pip check
+    env_after = None
+    if env is not None:
+        args = [a for r in env_info.get("requirements") or [] for a in ("-r", r)] or ["."]
+        step("installing the patched dependencies in a second environment (the original one is kept for the before run)…")
+        env_after, err = runtime.create_env(work / "venv-after", env.version)
+        code, o, cmd = env_after.install(args, cwd=wt) if env_after else (1, err, "")
+        v["install"] = {"status": "pass" if code == 0 else "fail", "python": env.full_version, "tool": env.tool,
+                        "command": cmd, "log": runtime._tail(o, 1500)}
+        v["checks"]["install"] = {"status": v["install"]["status"],
+                                  "detail": (f"patched requirements install on Python {env.full_version}" if code == 0
+                                             else f"install failed: {runtime._last_line(o)}")}
+        if code == 0:
+            pc = runtime.pip_check(env_after, baseline=env_info.get("pip_check_before"))
+            v["deps_check"] = pc
+            v["checks"]["deps_compatible"] = {"status": pc["status"], "detail": pc["detail"]}
+            runtime.ensure_pytest(env_after)
+        else:
+            env_after = None
+        step(f"install: {v['checks']['install']['status']} — {v['checks']['install']['detail'][:140]}")
+    else:
+        v["install"] = {"status": "skipped", "detail": env_info.get("detail") or why_not, "attempts": env_info.get("attempts")}
+        v["checks"]["install"] = {"status": "skipped", "detail": env_info.get("detail") or why_not}
+    # 3b. build-health fixes: the point is the install on the project's target Python
+    if proposal.get("kind") == "compat_upgrade" and can_install:
+        from . import appboot
+        tgt = appboot.target_python(wt)
+        step(f"installing the patched dependencies on the target Python {tgt['version']} ({tgt['source']})…")
+        ti, tenv = appboot.install_check(wt, tgt["version"], work / "venv-target")
+        if ti["ok"]:
+            step(f"starting the patched app on Python {ti['python']}…")
+            tb = appboot.boot(wt, tenv, work / "boot-target")
+            v["target_boot"] = {k: x for k, x in tb.items() if k != "log"}
+            v["checks"]["target_boot"] = {"status": {"healthy": "pass", "skipped": "n/a"}.get(tb["status"], "fail"),
+                                          "detail": f"Python {ti['python']}: {tb['status']} — {tb.get('detail', '')[:160]}"}
+            # the boot writes nothing into the worktree except through the app; drop anything it created
+            _run(["git", "-C", str(wt), "clean", "-fdq", "-e", "tests/guardian"], timeout=60)
+        v["target_install"] = {**ti, "target": tgt}
+        v["checks"]["target_install"] = {"status": "pass" if ti["ok"] else "fail",
+                                         "detail": (f"installs on Python {ti['python']} ({tgt['source']})" if ti["ok"]
+                                                    else f"still fails on Python {ti['python']}: {ti['error']}")}
+        step(f"target install: {v['checks']['target_install']['status']} — {v['checks']['target_install']['detail'][:140]}")
+    # 4. the repository's own tests, after the patch
+    after_tests = runtime.run_tests(wt, env_after, test_files)
+    v["tests"] = {"before": base_tests, "after": after_tests, "files": test_files}
     if after_tests["status"] == "n/a":
-        v["checks"]["tests"] = {"status": "n/a", "detail": after_tests["summary"]}
+        v["checks"]["tests"] = {"status": "skipped" if test_files else "n/a", "detail": after_tests["summary"]}
+    elif not after_tests.get("ran"):
+        v["checks"]["tests"] = {"status": "unknown", "detail": f"{len(test_files)} test file(s) found but no test ran: {after_tests['summary']}"}
     else:
         regress = after_tests["failed"] > base_tests.get("failed", 0) or (base_tests.get("status") == "ok" and after_tests["status"] != "ok")
+        fmt = lambda t: f"{t.get('passed', 0)}/{t.get('ran', 0)} passed" if t.get("ran") else t.get("summary", "")
         v["checks"]["tests"] = {"status": "fail" if regress else "pass",
-                                "detail": f"before: {base_tests['summary']} · after: {after_tests['summary']}"}
-    v["tests"] = {"before": base_tests, "after": after_tests}
+                                "detail": f"before: {fmt(base_tests)} · after: {fmt(after_tests)}"
+                                          + (f" (Python {env.full_version})" if env else "")}
     step(f"tests: {v['checks']['tests']['status']} ({v['checks']['tests']['detail'][:150]})")
-    _run(["git", "-C", str(wt), "add", "-A"], timeout=60)
-    msg = f"guardian {unit['rid']}: {proposal['action']}\n\nFindings: {', '.join(unit['finding_ids'])}\nProposal v{proposal.get('version')} by {proposal.get('author')}"
+    # 5. proof-of-fix: does the new version really stop the vulnerable behaviour?
+    if can_install:
+        from .agent import make_llm
+        from .probe import run_probes
+        pv = env.version if env is not None else f"{sys.version_info.major}.{sys.version_info.minor}"
+        # code writing: large model first, the default model when its quota is gone
+        pr = run_probes(out, unit, proposal, pv, work, [make_llm(out, large=True), make_llm(out, large=False)], step)
+    else:
+        pr = {"status": "skipped", "detail": why_not}
+    if pr.get("status") != "n/a":
+        v["probe"] = pr
+        v["checks"]["proof_of_fix"] = {"status": pr["status"], "detail": pr["detail"]}
+        step(f"proof-of-fix: {pr['status']} — {pr['detail'][:150]}")
+    # 6. Guardian's security tests (T1 exploit / T2 guard / T3 feature), run BEFORE and AFTER the fix
+    test_paths: list[str] = []
+    try:
+        from . import testgen
+        gen = testgen.generate(out, unit, proposal, wt, v.get("probe"))
+        before_wt = None
+        if env is not None:
+            before_wt = Path(str(wt) + "-before")
+            # the worktree's HEAD is still the original commit (nothing is committed yet)
+            if _run(["git", "-C", str(wt), "worktree", "add", "--detach", str(before_wt), "HEAD"], timeout=120)[0] != 0:
+                before_wt = None
+        try:
+            st = testgen.run_suite(gen, before_wt, env if before_wt else None, wt, env_after, work, step)
+        finally:
+            if before_wt is not None:
+                _run(["git", "-C", str(wt), "worktree", "remove", "--force", str(before_wt)], timeout=60)
+                shutil.rmtree(before_wt, ignore_errors=True)
+        v["security_tests"] = st
+        test_paths = st.get("files") or []
+        v["checks"]["security_tests"] = {"status": st["status"], "detail": st["detail"]}
+    except Exception as exc:
+        v["checks"]["security_tests"] = {"status": "unknown", "detail": f"test generation failed: {type(exc).__name__}: {exc}"}
+    step(f"security tests: {v['checks']['security_tests']['status']} — {v['checks']['security_tests']['detail'][:150]}")
+    # commit exactly the patched files and the security tests (nothing the runs left behind)
+    _run(["git", "-C", str(wt), "add", "--", *sorted(set(list(files) + test_paths))], timeout=60)
+    msg = (f"guardian {unit['rid']}: {proposal['action']}\n\nFindings: {', '.join(unit['finding_ids']) or 'none (build health)'}\n"
+           f"Proposal v{proposal.get('version')} by {proposal.get('author')}"
+           + (f"\nSecurity tests: {', '.join(test_paths)}" if test_paths else ""))
     code, txt = _run(["git", *GIT_ID, "-C", str(wt), "commit", "-q", "-m", msg], timeout=60)
     sha = _run(["git", "-C", str(wt), "rev-parse", "HEAD"], timeout=20)[1].strip()
     v["commit"] = sha if code == 0 else None
@@ -203,7 +354,7 @@ def validate(out: Path, unit: dict, proposal: dict, log: Callable[[str], None] =
         t0 = time.time()
         run_pipeline(wt, rescan, offline=bool(cfg.get("offline")), llm="offline", osv_dump=cfg.get("osv_dump"), day2=False,
                      log=lambda m: None, scan_id=f"{out.name}-{unit['rid']}-validate")
-        cmp = compare(out, rescan, unit)
+        cmp = compare(out, rescan, unit, proposal)
         step(f"rescan done in {time.time() - t0:.0f}s: {len(cmp['resolved'])} resolved, {len(cmp['new'])} new")
     except Exception as exc:
         cmp = None
@@ -213,12 +364,28 @@ def validate(out: Path, unit: dict, proposal: dict, log: Callable[[str], None] =
             os.environ.pop("GUARDIAN_PYPI_URL", None)
         else:
             os.environ["GUARDIAN_PYPI_URL"] = old_env
+    if cmp is not None and cmp["no_vuln_data"]:
+        v["rescan"] = {**cmp, "dir": str(rescan)}
+        why = (f"the rescan has no vulnerability data ({cmp['vulns_before']} known vulnerabilities before, 0 after, "
+               "including packages the patch did not touch) — it ran without OSV access, so it cannot show the fix")
+        v["checks"]["rescan_resolved"] = {"status": "unknown", "detail": why}
+        v["checks"]["no_new_vulns"] = {"status": "unknown", "detail": "no vulnerability data in the rescan"}
+        cmp = None
     if cmp is not None:
         v["rescan"] = {**cmp, "dir": str(rescan)}
         eff = (proposal.get("expected_risk") or {}).get("effect", "resolved")
         lowered = [r for r in cmp["remaining"] if r["after"] != r["before"] or r["usage_after"] != r["usage_before"]
                    or len(r["signals_after"]) < len(r["signals_before"])]
-        if not cmp["remaining"]:
+        if unit.get("target_kind") == "code":
+            from .codefix import still_vulnerable
+            left = still_vulnerable(wt, unit)
+            v["checks"]["rescan_resolved"] = ({"status": "fail", "detail": "still found by the SQL-injection detector at "
+                                               + ", ".join(f"{s['file']}:{s['line']}" for s in left)} if left else
+                                              {"status": "pass", "detail": f"resolved: {', '.join(unit['finding_ids'])} (the "
+                                               "SQL-injection detector no longer finds it in the patched code)"})
+        elif not unit["finding_ids"]:
+            pass                                  # build health: no finding to resolve, only "nothing new" counts
+        elif not cmp["remaining"]:
             v["checks"]["rescan_resolved"] = {"status": "pass", "detail": f"resolved: {', '.join(cmp['resolved'])}"}
         elif eff in ("reduced", "partly resolved") and lowered:
             v["checks"]["rescan_resolved"] = {"status": "pass", "detail": "risk reduced: " + "; ".join(
@@ -231,13 +398,46 @@ def validate(out: Path, unit: dict, proposal: dict, log: Callable[[str], None] =
         else:
             v["checks"]["rescan_resolved"] = {"status": "fail", "detail": "still present: " + ", ".join(
                 f"{r['finding_id']} ({r['after']})" for r in cmp["remaining"])}
-        v["checks"]["no_new_vulns"] = ({"status": "fail", "detail": "new: " + "; ".join(f"{n['title']} ({n['risk']})" for n in cmp["new"][:4])}
-                                       if cmp["new"] else {"status": "pass", "detail": "no new vulnerability or supply-chain finding"})
-    bad = [k for k, c in v["checks"].items() if c["status"] == "fail"]
-    partial = [k for k, c in v["checks"].items() if c["status"] == "unknown"]
+        v["checks"]["no_new_vulns"] = no_new_check(cmp)
+    # proof_of_fix is extra evidence: its pass raises confidence, but an inconclusive probe does not block
+    core = {k: c for k, c in v["checks"].items() if k != "proof_of_fix"}
+    bad = [k for k, c in core.items() if c["status"] == "fail"]
+    partial = [k for k, c in core.items() if c["status"] == "unknown"]
     v["status"] = "failed" if bad else "partial" if partial else "passed"
     v["finished_at"] = now()
     step(f"validation {v['status']}" + (f" ({', '.join(bad or partial)})" if (bad or partial) else ""))
+    return v
+
+
+def no_new_check(cmp: dict) -> dict:
+    hard = [n for n in cmp["new"] if n["hard"]]
+    soft = [n for n in cmp["new"] if not n["hard"]]
+    if hard:
+        return {"status": "fail", "detail": "new: " + "; ".join(f"{n['title']} ({n['risk']})" for n in hard[:4])}
+    if soft:
+        return {"status": "unknown", "detail": "no new vulnerability; needs a look: " + "; ".join(
+            f"{n['title']} (" + ("code changes in the release the fix upgrades to; review the diff" if n.get("expected_change")
+                                 else "metadata change only, no harmful behaviour seen") + ")" for n in soft[:3])}
+    return {"status": "pass", "detail": "no new vulnerability or supply-chain finding"}
+
+
+def overall(v: dict) -> None:
+    core = {k: c for k, c in v["checks"].items() if k != "proof_of_fix"}
+    bad = [k for k, c in core.items() if c["status"] == "fail"]
+    partial = [k for k, c in core.items() if c["status"] == "unknown"]
+    v["status"] = "failed" if bad else "partial" if partial else "passed"
+
+
+def reassess(out: Path, unit: dict, proposal: dict) -> Optional[dict]:
+    """Re-apply the comparison rules to a finished validation's stored rescan (no new sandbox run)."""
+    v = unit.get("validation") or {}
+    d = (v.get("rescan") or {}).get("dir")
+    if not d or not Path(d).exists() or (v.get("rescan") or {}).get("no_vuln_data"):
+        return None
+    cmp = compare(Path(out), Path(d), unit, proposal)
+    v["rescan"] = {**cmp, "dir": d}
+    v["checks"]["no_new_vulns"] = no_new_check(cmp)
+    overall(v)
     return v
 
 

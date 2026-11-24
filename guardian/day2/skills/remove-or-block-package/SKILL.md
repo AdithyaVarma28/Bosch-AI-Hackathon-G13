@@ -1,7 +1,7 @@
 ---
 name: remove-or-block-package
 description: Remove a malicious, typosquatted or unused package from the manifests and lockfile, or restore a tampered lockfile entry to the hashes published on the official index.
-allowed_files: requirements*.txt, poetry.lock, pyproject.toml, setup.cfg, setup.py
+allowed_files: requirements*.txt, poetry.lock, pyproject.toml, setup.cfg, setup.py, tests/guardian/*
 ---
 # Remove or block a package
 

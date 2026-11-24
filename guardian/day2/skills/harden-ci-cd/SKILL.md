@@ -1,7 +1,7 @@
 ---
 name: harden-ci-cd
 description: Harden a GitHub Actions workflow that exposes secrets or runs untrusted code (pull_request_target checking out PR code, missing permissions, unpinned third-party actions, secrets in PR jobs).
-allowed_files: .github/workflows/*.yml, .github/workflows/*.yaml
+allowed_files: .github/workflows/*.yml, .github/workflows/*.yaml, tests/guardian/*
 ---
 # Harden a CI/CD workflow
 

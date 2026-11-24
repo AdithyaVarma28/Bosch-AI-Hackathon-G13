@@ -115,19 +115,55 @@ def do_propose(out: Path, rid: str, cmd: dict) -> None:
     unit["proposals"].append(prop)
     unit["current"] = len(unit["proposals"]) - 1
     unit["status"] = "awaiting_proposal_review"
-    unit.pop("validation", None)
+    old = unit.pop("validation", None)
+    if (old or {}).get("worktree"):
+        sandbox.remove_worktree(out, old["worktree"])
     unit["last_agent_error"] = None
     put_rem(out, _refresh(unit))
     audit(out, "proposal_created", rid, version=prop["version"], author=prop["author"], skill=prop.get("skill"),
           action=prop["action"], fix_confidence=prop["fix_confidence"], feedback=feedback,
           checks={k: v.get("status") for k, v in (prop.get("checks") or {}).items()})
+    from .queue import on_new_proposal
+    on_new_proposal(out, rid)
 
 
-def do_validate(out: Path, rid: str, log: Callable[[str], None] = lambda m: None) -> None:
+def confirm_static(prop: dict, v: dict) -> None:
+    """Metadata checks that were unknown before the sandbox (offline index, no lockfile) can be settled by what the
+    sandbox observed. Only an unknown is upgraded, never a fail, and the original static result is kept."""
+    c, vc = prop.get("checks") or {}, v.get("checks") or {}
+    inst, env = v.get("install") or {}, v.get("env") or {}
+    tv = prop.get("target_version")
+    rescan = v.get("rescan") or {}
+
+    def settle(k: str, detail: str) -> None:
+        if (c.get(k) or {}).get("status") == "unknown":
+            c[k] = {"status": "pass", "detail": detail, "confirmed_by": "sandbox", "static_detail": c[k].get("detail")}
+
+    if vc.get("install", {}).get("status") == "pass" and tv:
+        settle("available", f"confirmed in the sandbox: {tv} was downloaded from the index and installed")
+        settle("runtime_compatible", f"confirmed in the sandbox: installs on Python {inst.get('python') or env.get('python')}")
+    if vc.get("deps_compatible", {}).get("status") == "pass":
+        settle("constraints_resolve", f"confirmed in the sandbox: pip check — {vc['deps_compatible']['detail']}")
+    if (rescan and not v.get("offline") and rescan.get("package") and not rescan.get("package_vulns_after")
+            and vc.get("rescan_resolved", {}).get("status") == "pass"):
+        settle("candidate_clean", f"confirmed by the rescan: no known vulnerability left for {rescan['package']} {tv or ''}".strip())
+
+
+def do_validate(out: Path, rid: str, log: Callable[[str], None] = lambda m: None, auto: bool = False,
+                force: bool = False) -> None:
+    """Sandbox validation. auto=True: run before any approval (the auto-validate queue) and leave the status alone.
+    An approval of a proposal version that was already validated reuses that run instead of repeating it."""
     out = Path(out)
     unit = get_rem(out, rid)
     prop = unit["proposals"][unit["current"]]
-    old = (unit.get("validation") or {}).get("worktree")
+    prev = unit.get("validation") or {}
+    if not auto and not force and prev.get("finished_at") and prev.get("proposal_version") == prop.get("version"):
+        unit["status"] = "awaiting_patch_review"
+        put_rem(out, _refresh(unit))
+        audit(out, "validation_reused", rid, version=prop["version"], status=prev.get("status"),
+              detail="this proposal version was already validated automatically; going straight to patch review")
+        return
+    old = prev.get("worktree")
     if old:
         sandbox.remove_worktree(out, old)
 
@@ -137,16 +173,21 @@ def do_validate(out: Path, rid: str, log: Callable[[str], None] = lambda m: None
         put_rem(out, u)
 
     v = sandbox.validate(out, unit, prop, log=progress)
+    v["proposal_version"], v["auto"] = prop.get("version"), auto
+    v.setdefault("finished_at", now())
     unit = get_rem(out, rid)
     unit["validation"] = v
     prop = unit["proposals"][unit["current"]]
-    for k in ("build", "tests", "rescan_resolved", "no_new_vulns"):
+    for k in critic.SANDBOX_CHECKS:
+        prop["checks"].pop(k, None)            # a re-run must not keep results of the previous run
         if k in v.get("checks", {}):
             prop["checks"][k] = v["checks"][k]
+    confirm_static(prop, v)
     prop["fix_confidence"], prop["fix_confidence_reasons"] = critic.fix_confidence(prop, v)
-    unit["status"] = "awaiting_patch_review"
+    if not auto:
+        unit["status"] = "awaiting_patch_review"
     put_rem(out, _refresh(unit))
-    audit(out, "validation_result", rid, version=prop["version"], status=v["status"],
+    audit(out, "validation_result", rid, version=prop["version"], status=v["status"], auto=auto or None,
           checks={k: c.get("status") for k, c in v.get("checks", {}).items()}, commit=v.get("commit"),
           sbom_diff=(v.get("rescan") or {}).get("sbom_diff"), detail=v.get("detail"))
 
@@ -187,7 +228,7 @@ def _n_proposal_review(s: RemState) -> dict:
 
 
 def _n_validate(s: RemState) -> dict:
-    do_validate(Path(s["out"]), s["rid"])
+    do_validate(Path(s["out"]), s["rid"], force=(s.get("cmd") or {}).get("action") == "revalidate")
     return {}
 
 
@@ -281,7 +322,7 @@ class WorkflowManager:
         elif a == "reject":
             do_close(self.out, unit["rid"], cmd)
         elif cmd["stage"] == "proposal" and a in ("approve", "revalidate") or a == "revalidate":
-            do_validate(self.out, unit["rid"])
+            do_validate(self.out, unit["rid"], force=a == "revalidate")
         elif cmd["stage"] == "patch" and a == "approve":
             do_apply(self.out, unit["rid"])
 
@@ -336,7 +377,9 @@ def submit(out: Path, rid: str, cmd: dict, background: bool = True) -> dict:
             raise KeyError(rid)
         validate_cmd(unit, cmd, mgr.paused_at(unit))
         cmd = {**cmd, "at": now()}
-        what = {"approve": "validating in the sandbox (build, tests, rescan)" if cmd["stage"] == "proposal" else "creating the fix branch",
+        pre = (unit.get("validation") or {}).get("proposal_version") == (unit["proposals"][unit["current"]] or {}).get("version")             and (unit.get("validation") or {}).get("finished_at")
+        what = {"approve": ("already validated: opening patch review" if pre else "validating in the sandbox (build, tests, rescan)")
+                if cmd["stage"] == "proposal" else "creating the fix branch",
                 "revise": "the agent is revising the proposal", "regenerate": "the agent is writing a proposal",
                 "alternative": "checking the selected candidate", "reject": "closing",
                 "revalidate": "validating in the sandbox"}[cmd["action"]]

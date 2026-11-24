@@ -558,3 +558,67 @@ def _unit(findings: list[dict], cands: list[dict], kind: str, target: str, label
         "finding_confidence": min((f["finding_confidence"] for f in findings), key=conf_idx),
         "candidates": cands, "proposals": [], "status": "new",
     }
+
+
+# ------------------------------------------------------------------ build health (DAY_2_COMPLETION_PLAN section 6.4)
+BUILD_HEALTH_FILE = "build_health.json"
+BUILD_HEALTH_RID = "B-001"
+
+
+def build_health_unit(out: Path, bh: dict) -> Optional[dict]:
+    """A remediation for "the project does not install on its target Python": the pin bumps found by
+    appboot.build_health. No CVE; the same two approvals and the same sandbox validation as any fix."""
+    if bh.get("status") != "fixable" or not bh.get("bumps"):
+        return None
+    from .common import repo_path
+    rf = RepoFiles(repo_path(out))
+    edits, notes = [], []
+    for b in bh["bumps"]:
+        e, n = upgrade_edits(rf, b["package"], b["from"], b["to"], True)
+        edits += e
+        notes += n
+    if not edits:
+        return None
+    tv = bh["target"]["version"]
+    cand = _cand("compat_upgrade", "upgrade-dependency",
+                 f"Make the project install and run on Python {tv}: " + ", ".join(f"{b['package']} {b['from']} → {b['to']}" for b in bh["bumps"]),
+                 edits, bumps=bh["bumps"],
+                 checks={"candidate_clean": {"status": "pass", "detail": "OSV lists no vulnerability for the bumped versions"},
+                         "available": {"status": "pass", "detail": "every bumped version is on the index with a wheel for Python " + tv},
+                         "runtime_compatible": {"status": "pass", "detail": f"each bumped version ships a wheel for Python {tv}"},
+                         "constraints_resolve": {"status": "pass", "detail": f"the full dependency set resolved and installed on Python {bh['after']['python']} with the bumps"}},
+                 notes=notes + [f"why: {b['package']} {b['from']}: {b['why']}" for b in bh["bumps"]]
+                 + ["build health, not a vulnerability fix: the report lists it separately"],
+                 compatibility=[f"patch/minor bumps only where the old pin cannot be installed, or crashes at import, on Python {tv}"],
+                 rollback="pin the previous versions again (git revert the fix commit)", expected_after="resolved")
+    cand["cid"] = 0
+    return {"rid": BUILD_HEALTH_RID, "target": f"build:python-{tv}", "target_label": f"Build health: install and run on Python {tv}",
+            "target_kind": "build_health", "finding_ids": [], "ranks": [0], "priority": "high", "decision": "Attend",
+            "decision_model": "build-health", "stage_risk": "high", "downgrade_limited": False, "finding_confidence": "high",
+            "candidates": [cand], "proposals": [], "status": "new", "build_health": bh}
+
+
+def add_build_health(out: Path, log=lambda m: None, force: bool = False) -> dict:
+    """Run the build-health check for a scan (cached in build_health.json) and add its remediation unit when the
+    install can be fixed by pin bumps. Safe to call again."""
+    import time as _t
+    from .appboot import build_health
+    from .common import get_rem, put_rem, read_json, repo_path, write_json
+    out = Path(out)
+    bh = read_json(out / BUILD_HEALTH_FILE)
+    if bh is None or force:
+        repo = repo_path(out)
+        if repo is None:
+            return {"status": "unavailable", "detail": "the scanned repository is not on this machine"}
+        bh = build_health(out, repo, log)
+        write_json(out / BUILD_HEALTH_FILE, bh)
+    if get_rem(out, BUILD_HEALTH_RID) is None:
+        unit = build_health_unit(out, bh)
+        if unit is not None:
+            meta = read_json(out / "scan.json", {}) or {}
+            unit["thread_id"] = f"{meta.get('scan_id') or out.name}:{BUILD_HEALTH_RID}:{int(_t.time())}"
+            put_rem(out, unit)
+            from .workflow import WorkflowManager
+            WorkflowManager.for_dir(out).start(unit)
+            log(f"build health: {unit['candidates'][0]['label']}")
+    return bh
