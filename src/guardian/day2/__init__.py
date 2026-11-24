@@ -1,6 +1,13 @@
 """Day 2: Brain & Shield. Prioritize, investigate, remediate, approve, validate, rescan, verify.
 
-Stages (see docs/day2_plan.md):
+Five delivery stages (see docs/day2_plan.md), implemented by these nodes:
+  1. Assess risk (20%): S10-S11
+  2. Plan remediation (20%): S12
+  3. Approve change (10%): S13
+  4. Validate outcome (30%): S14-S15
+  5. Verify and report (20%): S16
+
+Implementation nodes:
   S10 prioritize.py   explainable risk score + confidence -> ranked queue
   S11 threat.py       evidence-driven investigation of non-CVE supply-chain signals
   S12 candidates.py   candidate fixes (graph-aware), simulate.py (compatibility), tournament round 1

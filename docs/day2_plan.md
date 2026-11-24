@@ -5,25 +5,36 @@
 
 > Day 2 checkpoint: **"Show us how the Guardian takes a finding from detection to verified remediation."**
 
-Day 1 already finds the risks and backs each one with evidence (stages S0 to S9: facts, SBOM, code index, graph, detectors, P0–P3 bands, Evidence Agent, Verifier). Day 2 builds on that output. It does not redo it. It adds seven stages, S10 to S16, that run after the Day 1 report:
+Day 1 already finds the risks and backs each one with evidence (stages S0 to S9: facts, SBOM, code index, graph, detectors, P0–P3 bands, Evidence Agent, Verifier). Day 2 builds on that output. It does not redo it. For delivery and evaluation, its seven implementation nodes (S10 to S16) are grouped into five weighted stages that run after the Day 1 report:
 
 ```
 Day 1 report (findings, graph.json, sbom.cdx.json, code_index.json, run.db)
   │
-[S10 Prioritize]       explainable risk score + confidence → ranked queue
+[1. Assess risk — 20%]                 S10 Prioritize + S11 Investigate
+  explainable score, confidence, and evidence-backed threat assessment
   │
-[S11 Investigate]      deep dive on suspicious (non-CVE) changes, fact vs. inference split
+[2. Plan remediation — 20%]            S12 Remediate
+  deterministic candidates, graph simulation, compatibility ranking
   │
-[S12 Remediate]        generate candidate fixes, simulate them on the graph, pick the best
+[3. Approve change — 10%]              S13 Human approval
+  immutable, hash-bound reviewer decision
   │
-[S13 Human approval]   approve / edit / reject / accept risk, all recorded
+[4. Validate outcome — 30%]            S14 Validate + S15 Rescan and compare
+  sandbox build/test plus before-and-after proof from a fresh scan
   │
-[S14 Validate]         apply in a sandbox branch → build → tests
-  │
-[S15 Rescan + diff]    rerun the Day 1 pipeline on the patched tree → before/after SBOM + findings
-  │
-[S16 Verify & report]  verdict, remaining risk, confidence, audit trail, optional PR
+[5. Verify and report — 20%]           S16 Verify and report
+  deterministic verdict, independent review, policy results, audit trail
 ```
+
+| Delivery stage | Implementation nodes | Weight | Why it matters |
+|---|---:|---:|---|
+| 1. Assess risk | S10–S11 | 20% | Ensures remediation starts from a ranked, evidence-backed understanding of risk. |
+| 2. Plan remediation | S12 | 20% | Chooses a safe, compatible and reproducible candidate rather than a speculative upgrade. |
+| 3. Approve change | S13 | 10% | Keeps a human accountable for the exact proposed change. |
+| 4. Validate outcome | S14–S15 | 30% | Carries the greatest weight: the fix must build, pass tests and prove its effect in a fresh scan. |
+| 5. Verify and report | S16 | 20% | Produces an independently checked verdict and a complete auditable record. |
+
+**Total: 100%.** The weights describe Day 2's delivery/evaluation emphasis; they do not change the per-finding risk score calculated in S10.
 
 ---
 

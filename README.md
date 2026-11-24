@@ -109,26 +109,24 @@ ingest â†’ cartographer â†’ [resolver_sbom â€– code_index] â†�
 
 Design: [docs/day2_plan.md](docs/day2_plan.md). Code: `src/guardian/day2/`.
 
-Day 2 is not a separate tool: its stages are nodes in the same LangGraph as detection.
+Day 2 is not a separate tool: its implementation nodes are part of the same LangGraph as detection. For the demo and evaluation, those nodes are presented as five weighted stages.
 
 ```
 ingest → … → vuln_intel ‖ change_anomaly ‖ … → correlator → evidence_agent → report        (detection)
-  → day2_start → prioritize (S10) → investigate (S11) → remediation_plan (S12) → approval_gate (S13)
-  → [approved] validate (S14 + S15 rescan, S14.6 self-correction) → verify (S16) → remediation_report
+  → 1 Assess risk (S10–S11, 20%) → 2 Plan remediation (S12, 20%) → 3 Approve change (S13, 10%)
+  → [approved] 4 Validate outcome (S14–S15, 30%) → 5 Verify & report (S16, 20%)
   → [nothing approved] remediation_report: stop and wait for a reviewer
 ```
 
 `guardian approve …` records a decision; `guardian remediate <run_dir>` resumes the same Day 2 nodes from the gate. Rescans of a fix run the detection part only (no recursion). `report.html` is one page: the findings table shows each finding's Day 2 score, bucket, plan status and verdict, and a **Remediation** tab holds the full Day 2 report.
 
-| Stage | What it does |
-|---|---|
-| S10 Prioritize | 0-100 score per finding: severity + exploitability (KEV/EPSS/malicious advisory) + reachability (symbol called > route > imported > not referenced) + exposure + production use + criticality (what the using code touches) + policy. Separate confidence (data quality). Buckets: Fix now / Schedule / Monitor. |
-| S11 Investigate | Non-CVE signals: lockfile/manifest diff across the commit, package archive content diff (in memory, never executed), publisher/age/provenance/repository checks, lockfile vs registry integrity. Verdict + typed claims (fact cites raw evidence, inference labelled). |
-| S12 Remediate | Deterministic candidates: smallest safe upgrade, latest in major, parent upgrade for transitive vulns (graph-aware, range-floor aware), npm override / pip pin, remove/block typosquats, restore lockfile source, remove install hook, base-image tag, action SHA pin, least-privilege permissions, escalate. Each candidate is applied to a copy and re-scanned (target resolved? new advisories? policy? major-version API risk?), then ranked. |
-| S13 Approve | Reviewer approves the exact plan hash (finalists, edits, diff hashes). Any change makes a new revision that needs a new approval. Approvals and audit are append-only (SQLite triggers). |
-| S14 Validate | Throwaway copy with history, branch `guardian/fix-<id>`, commit. Install/build/test in the sandbox on the original and the patched tree: a regression is a test that passed before and fails after. No tests → smoke check (caps the verdict). |
-| S15 Rescan | The Day 1 pipeline runs unchanged on the branch; SBOM diff, findings resolved/open/new, band and score deltas, target advisories checked against every component of the new tree. |
-| S16 Verify | Policy-as-code (`src/guardian/data/default_policy.yaml`, floor rules cannot be weakened by a repo `guardian-policy.yaml`) sets the deterministic verdict; an independent verifier re-checks the evidence and can only downgrade. Report, VEX, patch export after a second approval. |
+| Delivery stage | Weight | What it does |
+|---|---:|---|
+| 1. Assess risk (S10–S11) | 20% | Scores and ranks each finding with data-quality confidence, then investigates suspicious non-CVE signals using evidence-backed claims. |
+| 2. Plan remediation (S12) | 20% | Produces deterministic, graph-aware candidates; simulates, checks compatibility and ranks them. |
+| 3. Approve change (S13) | 10% | Reviewer approves the exact plan hash; any plan change requires a new approval and the audit is append-only. |
+| 4. Validate outcome (S14–S15) | 30% | Tests the selected fix in a throwaway branch, then rescans it to prove the target is resolved without new serious findings. |
+| 5. Verify & report (S16) | 20% | Applies policy-as-code for the deterministic verdict, performs independent evidence review, and produces the report/VEX/patch export. |
 
 ```powershell
 # offline demo on the fixture (bundled advisory + registry snapshots)
