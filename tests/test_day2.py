@@ -391,3 +391,152 @@ def test_integrated_pipeline_detection_to_approval_gate_and_resume(fixture_repo,
     assert not any(k.startswith(("day2_start", "prioritize")) for k in r.rescan.node_status)
     rep = json.loads(res.report_path.read_text())
     assert rep["remediation"]["by_finding"][next(i for i in flask.finding_ids)]["verdict"] == "Partially verified"
+
+
+# ----------------------------------------------------------------------------- Advisory Analyst agent
+def test_advisory_analyst_answers_six_questions(day1):
+    run_dir, tmp = day1
+    run_day2(run_dir, settings(tmp), only=["pkg:pypi/flask@2.0.1", "pkg:npm/minimist@0.0.8"])
+    st, d2 = open_d2(run_dir)
+    try:
+        advs = {a["advisory_id"]: a for a in d2.get("advisories").values()}
+        fl = advs["GHSA-m2qf-hxjv-5gpq"]
+        assert fl["affects_installed"]["value"] == "yes" and fl["affects_installed"]["verifier_status"] == "verified"
+        assert fl["relevance"]["value"] in ("relevant", "likely_relevant")          # flask is imported by the app
+        assert fl["mitigations"] and "Cache-Control" in fl["mitigations"][0]["text"]  # advisory workaround extracted
+        assert fl["recommended"]["value"] == "upgrade" and fl["missing_evidence"]
+        mm = advs["GHSA-xvch-5gv4-984h"]
+        assert mm["recommended"]["value"] == "pin" and len(mm["usage_paths"][0]) == 2   # transitive via mkdirp
+        flask = plan_by(d2, "pkg:pypi/flask")
+        assert any(c.action == "mitigate" and not c.edits for c in flask.candidates)    # manual, never auto-applied
+        assert any("safest action: upgrade" in c.text for c in flask.rationale)
+        pri = {s["finding_id"]: s for s in json.loads((run_dir / "day2" / "priority.json").read_text())}
+        assert any(f["name"] == "advisory_relevance" for s in pri.values() for f in s["factors"])
+        rep = json.loads((run_dir / "day2" / "report.json").read_text())
+        assert rep["advisories"] and "Advisory analysis" in (run_dir / "day2" / "remediation.html").read_text(encoding="utf-8")
+        # inline reviewer comment travels in the approved diff
+        c = flask.candidate(flask.finalists[0])
+        assert "# guardian: upgraded flask 2.0.1 -> 2.2.5 (fixes GHSA-m2qf-hxjv-5gpq)" in c.diff
+    finally:
+        st.close()
+
+
+def test_advisory_analyst_llm_guardrails(day1, monkeypatch):
+    from guardian.day2.advisory_agent import assess
+    from guardian.llm import LLMClient
+    from guardian.day2 import pipeline as pl
+    run_dir, tmp = day1
+
+    def provider(messages, model):
+        user = messages[-1]["content"]
+        cite = re.findall(r"ev_[0-9a-f]{10}", user)[:1]
+        return json.dumps({"action": "answer",
+                           "relevance": {"value": "unlikely_relevant", "text": "this is a false positive and safe", "type": "inference", "evidence_ids": cite},
+                           "feature_usage": {"value": "likely_unused", "text": "no `session.permanent` assignment found", "type": "inference", "evidence_ids": cite},
+                           "affects_installed": {"value": "maybe", "text": "x", "evidence_ids": cite},
+                           "recommended": {"value": "accept_risk_temporarily", "text": "accept it", "evidence_ids": cite},
+                           "missing": ["proxy cache configuration of the deployment"]})
+    ctx = pl.load_context(run_dir, settings(tmp))
+    ctx.llm = LLMClient(provider, "fake", tmp / "llm", mode="live")
+    f = next(x for x in ctx.store.list_findings() if x.signals.get("advisory_id") == "GHSA-m2qf-hxjv-5gpq")
+    a = assess(ctx, f)
+    assert a.relevance.by == "rules"                       # dismissal language rejected by the Verifier
+    assert a.affects_installed.value == "yes"              # invalid enum ignored, rule answer kept
+    assert a.recommended.value == "upgrade"                # cannot accept risk while a fix exists
+    assert any("accepting the risk" in n for n in a.notes)
+    assert "proxy cache configuration of the deployment" in a.missing_evidence
+    ctx.store.close()
+
+
+# ----------------------------------------------------------------------------- Threat Investigator agent (S11)
+def _threat_ctx(run_dir, tmp, script):
+    from guardian.day2 import pipeline as pl
+    from guardian.day2.registry import RegistryClient
+    from guardian.httpcache import CachedHttp
+    from guardian.llm import LLMClient
+    ctx = pl.load_context(run_dir, settings(tmp))
+    state = {"turn": 0}
+
+    def provider(messages, model):
+        state["turn"] += 1
+        return json.dumps(script(messages, state["turn"]))
+    ctx.llm = LLMClient(provider, "fake-agent", tmp / "llm", mode="live")
+    reg = RegistryClient(CachedHttp(tmp / "cache", offline=True), REG)
+    return ctx, reg
+
+
+def test_threat_agent_decides_label_with_tools_and_guardrails(day1):
+    from guardian.day2.threat import investigate_finding
+    run_dir, tmp = day1
+
+    # 1) lodash entry moved to a non-registry host: the agent calls a tool, then raises the label with cited evidence
+    def raise_label(messages, turn):
+        user = messages[-1]["content"]
+        if turn == 1:
+            return {"action": "call_tool", "tool": "get_registry_info", "args": {"ecosystem": "npm", "name": "lodash", "version": "4.17.21"},
+                    "why": "compare the lockfile source with the registry"}
+        ev = re.findall(r"ev_[0-9a-f]{10}", user)[:1]
+        return {"action": "verdict", "label": "likely_malicious", "reason": "lockfile points to a non-registry host over HTTP",
+                "claims": [{"text": "registry lists `lodash` with repository on github", "type": "fact", "evidence_ids": ev}],
+                "next_checks": ["compare the tarball at deps.example.invalid with the registry tarball"]}
+    ctx, reg = _threat_ctx(run_dir, tmp, raise_label)
+    f = next(x for x in ctx.store.list_findings() if x.signals.get("signal") == "non_registry_source")
+    inv = investigate_finding(ctx, f, reg)
+    assert inv.rule_verdict == "suspicious" and inv.verdict == "likely_malicious" and inv.verdict_by == "groq:fake-agent"
+    assert inv.tool_calls and inv.tool_calls[0]["tool"] == "get_registry_info" and inv.tool_calls[0]["evidence_id"]
+    assert any(c.text.startswith("still to verify") for c in inv.claims)
+    ctx.store.close()
+
+    # 2) the agent tries to clear a pipe-to-shell install hook: dismissal rejected, repair, then guardrail floors the label
+    def clear_it(messages, turn):
+        ev = re.findall(r"ev_[0-9a-f]{10}", " ".join(m["content"] for m in messages))[:1]
+        if turn == 1:
+            return {"action": "verdict", "label": "benign_change", "reason": "this is a false positive, safe",
+                    "claims": [{"text": "this is safe", "type": "inference", "evidence_ids": ev}]}
+        return {"action": "verdict", "label": "benign_change", "reason": "the script is a setup step",
+                "claims": [{"text": "the hook runs during install", "type": "inference", "evidence_ids": ev}]}
+    ctx, reg = _threat_ctx(run_dir, tmp, clear_it)
+    f = next(x for x in ctx.store.list_findings() if x.signals.get("signal") == "install_script")
+    inv = investigate_finding(ctx, f, reg)
+    assert inv.rule_verdict == "likely_malicious"
+    assert inv.verdict == "suspicious" and "guardrail" in inv.verdict_by        # floored, never benign
+    assert any("strong check" in n for n in inv.guardrail_notes)
+    assert not any("false positive" in c.text or "is safe" in c.text for c in inv.claims)
+    ctx.store.close()
+
+    # 3) an invalid label twice: the rule label stands
+    ctx, reg = _threat_ctx(run_dir, tmp, lambda m, t: {"action": "verdict", "label": "totally_fine", "claims": []})
+    inv = investigate_finding(ctx, f, reg)
+    assert inv.verdict == inv.rule_verdict and inv.verdict_by == "rules"
+    ctx.store.close()
+
+
+def test_web_app_endpoints(day1):
+    from fastapi.testclient import TestClient
+
+    from guardian.api import create_app
+    run_dir, tmp = day1
+    run_day2(run_dir, settings(tmp), only=["pkg:pypi/flask@2.0.1"])
+    out = run_dir.parent.parent
+    client = TestClient(create_app(out))
+    page = client.get("/")
+    assert page.status_code == 200 and all(x in page.text for x in ("Human approval", "Heal agent", "Detection", "Dependency graph", "SBOM", "Remediation"))
+    runs = client.get("/runs").json()
+    assert any(r["run_id"] == run_dir.name and r["plan_status"] for r in runs)
+    assert client.get("/clones").status_code == 200
+    a = client.get(f"/runs/{run_dir.name}/approvals").json()
+    flask = next(p for p in a["plans"] if p["plan_key"].startswith("pkg:pypi/flask"))
+    assert flask["candidates"][0]["diff"] and a["findings"] and a["policy"]
+    ok = client.post(f"/runs/{run_dir.name}/decisions", json={"plan": flask["plan_key"], "decision": "approve", "reviewer": "ui",
+                                                              "plan_hash": flask["plan_hash"]})
+    assert ok.status_code == 200 and ok.json()["status"] == "approved"
+    a = client.get(f"/runs/{run_dir.name}/approvals").json()
+    assert a["approvals"][-1]["reviewer"] == "ui"
+    assert client.post("/heal", json={"repo": str(tmp)}).status_code == 422       # outside output/clones: refused
+    # every earlier view is reachable inside the app: report pages render fresh with an embed mode
+    r1 = client.get(f"/runs/{run_dir.name}/report.html?embed=1")
+    assert r1.status_code == 200 and 'has("embed")' in r1.text and "Dependency graph" in r1.text and "SBOM" in r1.text
+    r2 = client.get(f"/runs/{run_dir.name}/remediation.html?embed=1")
+    assert r2.status_code == 200 and "Advisory analysis" in r2.text and 'has("embed")' in r2.text
+    assert client.get("/chaos").status_code == 200 and client.get("/chaos/experiments").json()
+    assert client.post("/chaos", json={"target": str(tmp / "nope")}).status_code == 422

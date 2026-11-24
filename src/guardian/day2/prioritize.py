@@ -73,7 +73,7 @@ def reachability(ctx: RunContext, f: Finding) -> tuple[str, str, list[str]]:
         return "imported", f"imported in {len(files)} file(s) (static reference, not proof of use)", files
     eco = parse_purl(f.subject)[0] if f.subject.startswith("pkg:") else None
     covered = bool(ctx.code_index and ctx.code_index.files and eco and any(
-        cf.language in {"python": ["python"], "npm": ["javascript", "typescript"]}.get(eco, []) for cf in ctx.code_index.files))
+        cf.language in {"pypi": ["python"], "npm": ["javascript", "typescript"]}.get(eco, []) for cf in ctx.code_index.files))
     if covered and eco in ("pypi", "npm"):
         return "not_referenced", "no source file imports it or a package that depends on it", files
     return "unknown", "no code index for this ecosystem", files
@@ -124,7 +124,7 @@ def criticality(ctx: RunContext, files: list[str], f: Finding) -> tuple[str, flo
 
 
 def score_finding(ctx: RunContext, f: Finding, policy: Policy | None, trust: dict[str, int],
-                  investigations: dict[str, Investigation] | None = None) -> RiskScore:
+                  investigations: dict[str, Investigation] | None = None, advisories: dict | None = None) -> RiskScore:
     s = f.signals
     factors: list[RiskFactor] = []
     conf_reasons: list[str] = []
@@ -210,6 +210,13 @@ def score_finding(ctx: RunContext, f: Finding, policy: Policy | None, trust: dic
     # criticality
     clabel, cpts, cdet = criticality(ctx, files, f)
     factors.append(RiskFactor(name="criticality", points=cpts, detail=f"{clabel}: {cdet}"))
+    # advisory analyst (bounded, evidence-backed only; never changes the band)
+    adv = (advisories or {}).get(f.id)
+    if adv is not None and adv.relevance.value != "unknown" and adv.relevance.verifier_status in ("verified", "downgraded") \
+            and adv.relevance.evidence_ids:
+        from .advisory_agent import RELEVANCE_POINTS
+        factors.append(RiskFactor(name="advisory_relevance", points=RELEVANCE_POINTS[adv.relevance.value],
+                                  detail=f"{adv.relevance.value} ({adv.relevance.by}); safest action {adv.recommended.value}"))
     # policy
     violations = triage_violations(policy, f, investigations) if policy else []
     block = [v for v in violations if (policy.rule(v) or {}).get("severity") == "block"] if policy else []
@@ -251,12 +258,12 @@ def score_finding(ctx: RunContext, f: Finding, policy: Policy | None, trust: dic
 
 
 def prioritize(ctx: RunContext, findings: list[Finding], policy: Policy | None,
-               investigations: dict[str, Investigation] | None = None) -> list[RiskScore]:
+               investigations: dict[str, Investigation] | None = None, advisories: dict | None = None) -> list[RiskScore]:
     trust: dict[str, int] = {}
     for f in findings:
         if f.classification == "S" and f.cls == "anomaly":
             trust[package_name(f.subject)] = trust.get(package_name(f.subject), 0) + 1
-    scores = [score_finding(ctx, f, policy, trust, investigations) for f in findings if f.status == "open"]
+    scores = [score_finding(ctx, f, policy, trust, investigations, advisories) for f in findings if f.status == "open"]
     bucket_order = {"fix_now": 0, "schedule": 1, "monitor": 2}
     return sorted(scores, key=lambda r: (bucket_order[r.bucket], BAND_ORDER.get(r.band or "", 9), -r.total, r.title))
 

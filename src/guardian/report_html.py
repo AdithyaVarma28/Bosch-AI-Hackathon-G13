@@ -356,7 +356,9 @@ function openFinding(id){const f=FIND[id];if(!f)return;const x=f.explanation||{}
  ${x.counterfactual?`<p><b>What would change it:</b> ${esc(x.counterfactual)}</p>`:""}<p class="sub">${esc(x.notes||"")}</p>
  ${BYF[id]?`<h3>Remediation (Day 2)</h3><p>Risk score <b>${BYF[id].score}</b> (${esc(BYF[id].bucket.replace("_"," "))}, confidence ${esc(BYF[id].confidence)}) · <span class="sub">${esc(BYF[id].breakdown||"")}</span></p>
  ${BYF[id].plan_key?`<p>Plan <span class="mono">${esc(BYF[id].plan_key)}</span> · ${esc(BYF[id].plan_status||"")}${BYF[id].verdict?" · verdict <b>"+esc(BYF[id].verdict)+"</b>":""}<br>${esc(BYF[id].recommended||"")}</p>`:""}
- ${BYF[id].investigation?`<p>Investigation: <b>${esc(BYF[id].investigation)}</b></p>`:""}<p><button data-rem="1">Open in Remediation</button></p>`:""}
+ ${BYF[id].investigation?`<p>Investigation: <b>${esc(BYF[id].investigation)}</b></p>`:""}
+ ${BYF[id].advisory?`<p>Advisory analysis (${esc(BYF[id].advisory.by)}): relevance <b>${esc(BYF[id].advisory.relevance)}</b> | vulnerable feature <b>${esc(BYF[id].advisory.feature_usage)}</b> | affects installed <b>${esc(BYF[id].advisory.affects_installed)}</b> | safest action <b>${esc(BYF[id].advisory.recommended)}</b>
+ ${(BYF[id].advisory.mitigations||[]).map(m=>`<br><span class="sub">mitigation: ${esc(m)}</span>`).join("")}${(BYF[id].advisory.missing||[]).length?`<br><span class="sub">missing evidence: ${esc(BYF[id].advisory.missing.join("; "))}</span>`:""}</p>`:""}<p><button data-rem="1">Open in Remediation</button></p>`:""}
  <h3>Raw evidence</h3><div class="claim">${(f.raw_evidence_ids||[]).map(e=>`<span class="ev" data-ev="${esc(e)}">${esc(e)}</span>`).join("")}</div>
  <details><summary class="sub">All signals</summary><pre>${esc(JSON.stringify(s,null,2))}</pre></details>`;
  const b=el.querySelector("[data-show]");if(b)b.onclick=()=>showInGraph(b.dataset.show);
@@ -453,5 +455,8 @@ function showPage(p){page=p;document.querySelectorAll(".page").forEach(x=>x.clas
  window.scrollTo({top:0})}
 $("topnav").onclick=e=>{const b=e.target.closest("button");if(b)showPage(b.dataset.p)};
 $("n-report").textContent=R.findings.length;$("n-graph").textContent=V.nodes.length;
-showPage(["graph","sbom","report"].concat(REM?["remediation"]:[]).includes(location.hash.slice(1))?location.hash.slice(1):"report");
+const PAGES=["graph","sbom","report"].concat(REM?["remediation"]:[]);
+if(new URLSearchParams(location.search).has("embed")){document.querySelector("header").style.display="none"}   /* inside the Guardian app */
+window.addEventListener("hashchange",()=>{const p=location.hash.slice(1);if(PAGES.includes(p)&&p!==page)showPage(p)});
+showPage(PAGES.includes(location.hash.slice(1))?location.hash.slice(1):"report");
 </script></body></html>"""

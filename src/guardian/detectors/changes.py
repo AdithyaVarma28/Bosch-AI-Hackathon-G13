@@ -89,7 +89,8 @@ def detect_changes(ctx: RunContext, last_n: int = 20) -> list[Finding]:
                                        signals={"signal": "integrity_changed_same_version", "version": A["version"], "commit": h.commit,
                                                 "manifest_changed_in_commit": manifest_changed, "message": h.message}))
                 hb, ha = _host(B["resolved"]), _host(A["resolved"])
-                if A["resolved"] and B["resolved"] and hb != ha:
+                # a move TO an official registry (e.g. a remediation restoring the source) is not a hijack
+                if A["resolved"] and B["resolved"] and hb != ha and ha not in TRUSTED_HOSTS:
                     ev = store.add_evidence("raw", "git", f"{f}@{h.commit}",
                                             f"{name}@{A['version']}\nbefore resolved: {B['resolved']}\nafter resolved:  {A['resolved']}\ncommit {short}: {h.message}")
                     out.append(Finding(cls="anomaly", subject=name, title=f"Resolved source of {name} moved from {hb} to {ha}",

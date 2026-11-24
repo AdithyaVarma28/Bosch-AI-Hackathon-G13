@@ -50,6 +50,7 @@ class Day2Context:
     replan: bool = False
     scores: list[RiskScore] = field(default_factory=list)
     investigations: dict[str, Investigation] = field(default_factory=dict)
+    advisories: dict[str, Any] = field(default_factory=dict)        # finding id -> AdvisoryAssessment
     queue: list[PlanInput] = field(default_factory=list)
     after_components: dict[str, list] = field(default_factory=dict)
     after_findings: dict[str, list[Finding]] = field(default_factory=dict)
@@ -102,7 +103,8 @@ def n_investigate(dc: Day2Context, state) -> dict:
         dc.investigations = investigate_all(dc.ctx, dc.findings, dc.reg)
         dc.d2.put("investigations", {k: v.model_dump() for k, v in dc.investigations.items()})
         for inv in dc.investigations.values():
-            dc.d2.audit("S11", f"investigated: {inv.verdict}", f"{inv.subject} ({inv.signal}): {inv.verdict_reason}",
+            dc.d2.audit("S11", f"investigated: {inv.verdict}", f"{inv.subject} ({inv.signal}): {inv.verdict_reason} "
+                        f"[label by {inv.verdict_by}; rule baseline {inv.rule_verdict}; {len(inv.tool_calls)} tool call(s)]",
                         evidence_ids=sorted({e for c in inv.checks for e in c.evidence_ids})[:5])
     dc.scores = prioritize(dc.ctx, dc.findings, dc.policy, dc.investigations)       # re-score with verdicts
     dc.d2.save_artifact("priority.json", [s.model_dump() for s in dc.scores])
@@ -113,8 +115,35 @@ def n_investigate(dc: Day2Context, state) -> dict:
     return {"_message": f"{len(dc.investigations)} non-CVE signal(s) investigated: " + ", ".join(f"{k}={n}" for k, n in sorted(v.items()))}
 
 
+def n_advisory(dc: Day2Context, state) -> dict:
+    """Advisory Analyst: per confirmed advisory, relevance / feature use / mitigation / affected path / safest action /
+    missing evidence. Bounded effect: a score factor in S10 and manual mitigation candidates in S12."""
+    from .advisory_agent import assess_all
+    from .models import AdvisoryAssessment
+    cached = dc.d2.get("advisories")
+    if cached and not dc.replan:
+        dc.advisories = {k: AdvisoryAssessment.model_validate(v) for k, v in cached.items()}
+    else:
+        dc.advisories = assess_all(dc.ctx, dc.findings, {s.finding_id: s for s in dc.scores})
+        dc.d2.put("advisories", {k: v.model_dump() for k, v in dc.advisories.items()})
+        for a in dc.advisories.values():
+            dc.d2.audit("S11.5", f"advisory analysed: {a.advisory_id}",
+                        f"{a.package}@{a.version}: relevance {a.relevance.value}, feature {a.feature_usage.value}, "
+                        f"affects installed {a.affects_installed.value}, safest action {a.recommended.value} ({a.generated_by})",
+                        evidence_ids=[e for e in a.affects_installed.evidence_ids if e][:2])
+    dc.scores = prioritize(dc.ctx, dc.findings, dc.policy, dc.investigations, dc.advisories)
+    dc.d2.save_artifact("priority.json", [s.model_dump() for s in dc.scores])
+    dc.d2.save_artifact("advisories.json", {k: v.model_dump() for k, v in dc.advisories.items()})
+    rel: dict[str, int] = {}
+    for a in dc.advisories.values():
+        rel[a.recommended.value] = rel.get(a.recommended.value, 0) + 1
+    by = {a.generated_by for a in dc.advisories.values()} or {"rules"}
+    return {"_message": f"{len(dc.advisories)} advisory(ies) analysed by {', '.join(sorted(by))}; safest actions: "
+                        + ", ".join(f"{k}={v}" for k, v in sorted(rel.items()))}
+
+
 def n_plan(dc: Day2Context, state) -> dict:
-    dc.queue = build_queue(dc.ctx, dc.findings, dc.scores, dc.investigations, dc.ctx.settings.max_queue, dc.only)
+    dc.queue = build_queue(dc.ctx, dc.findings, dc.scores, dc.investigations, dc.ctx.settings.max_queue, dc.only, dc.advisories)
     made = kept = 0
     baseline = dc.findings
     for pin in dc.queue:
@@ -315,7 +344,8 @@ def n_report(dc: Day2Context, state) -> dict:
 
 
 # Day 2 stage nodes. Names are unique so they can live in the same LangGraph as the Day 1 nodes.
-D2_NODES = [("prioritize", n_prioritize), ("investigate", n_investigate), ("remediation_plan", n_plan),
+D2_NODES = [("prioritize", n_prioritize), ("investigate", n_investigate), ("advisory_analysis", n_advisory),
+            ("remediation_plan", n_plan),
             ("approval_gate", n_gate), ("validate", n_validate), ("verify", n_verify), ("remediation_report", n_report)]
 
 
@@ -326,7 +356,8 @@ def add_day2_nodes(g: StateGraph, entry_from: Any, end: Any = END) -> None:
         g.add_node(name, _node(name, fn))
     g.add_edge(entry_from, "prioritize")
     g.add_edge("prioritize", "investigate")
-    g.add_edge("investigate", "remediation_plan")
+    g.add_edge("investigate", "advisory_analysis")
+    g.add_edge("advisory_analysis", "remediation_plan")
     g.add_edge("remediation_plan", "approval_gate")
     g.add_conditional_edges("approval_gate", lambda s: "validate" if s.get("approved") else "remediation_report",
                             ["validate", "remediation_report"])

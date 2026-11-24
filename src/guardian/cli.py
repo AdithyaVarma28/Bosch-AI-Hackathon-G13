@@ -190,6 +190,70 @@ def remediate(run_dir: Path = typer.Argument(..., help="a finished Day 1 run dir
 
 
 @app.command()
+def heal(target: str = typer.Argument(None, help="clone under output/clones (name or path), or a GitHub URL"),
+         list_: bool = typer.Option(False, "--list", help="list clones under output/clones and exit"),
+         reviewer: str = typer.Option(None, help="your name: enables interactive approval in this terminal"),
+         max_iterations: int = typer.Option(3, help="maximum observe -> fix cycles"),
+         max_retries: int = typer.Option(2, help="fallback attempts per plan (next finalist, self-correction)"),
+         bands: str = typer.Option("P0,P1", help="bands counted towards the threshold"),
+         max_remaining: int = typer.Option(0, help="stop when at most this many counted findings remain"),
+         count_signals: bool = typer.Option(False, help="count non-CVE findings too (not only vulnerabilities)"),
+         require_verified: bool = typer.Option(False, help="apply only 'Verified' fixes (default also 'Partially verified')"),
+         restart: bool = typer.Option(False, help="start a new heal branch instead of resuming"),
+         skip_pending: bool = typer.Option(False, help="continue without deciding the plans waiting in this iteration "
+                                                       "(skipped, not rejected; asked again next iteration)"),
+         allow_any_path: bool = typer.Option(False, help="allow repositories outside output/clones"),
+         out: Path = typer.Option(Path("output")), sandbox: str = typer.Option("docker"), offline: bool = typer.Option(False),
+         no_llm: bool = typer.Option(False, "--no-llm"), no_docker: bool = typer.Option(False, "--no-docker"),
+         advisory_db: Path = typer.Option(None), registry_snapshot: Path = typer.Option(None), model: str = typer.Option(None)):
+    """Agentic heal loop on a cloned repo: scan -> plan -> HUMAN APPROVAL -> validate -> apply to the clone (branch
+    guardian/heal-*) -> verify in place (rollback + next candidate on failure) -> repeat until the threshold is met."""
+    from .day2.heal import HealConfig, HealError, heal as run_heal
+    clones = Path(out) / "clones"
+    if list_ or not target:
+        for d in sorted(p for p in clones.glob("*") if (p / ".git").exists()):
+            console.print(f"  {d.name}")
+        return
+    cfg = HealConfig(max_iterations=max_iterations, max_retries=max_retries, bands=tuple(b.strip() for b in bands.split(",") if b.strip()),
+                     max_remaining=max_remaining, count_signals=count_signals,
+                     accept=("Verified",) if require_verified else ("Verified", "Partially verified"), out_dir=out,
+                     allowed_root=None if allow_any_path else clones)
+    s = _d2_settings(offline, no_llm, no_docker, sandbox, advisory_db, registry_snapshot, None, 5, 3, model)
+
+    def approver(plan, run_dir):
+        console.print(f"\n[bold]{plan.title}[/]  rev {plan.revision}  hash {plan.plan_hash[:16]}")
+        for cid in plan.finalists:
+            c = plan.candidate(cid)
+            console.print(f"  finalist {c.id}: {c.summary}  [dim](compatibility {c.compatibility}; rollback: {c.rollback})[/]")
+            if c.diff:
+                console.print(f"[dim]{c.diff[:1200]}[/]")
+        choice = typer.prompt("approve / reject / skip", default="skip")
+        if choice not in ("approve", "reject"):
+            return None
+        return choice, typer.prompt("Reason", default="")
+
+    try:
+        st = run_heal(target, s, cfg, approver=approver if reviewer else None, reviewer=reviewer, emit=_emit, restart=restart,
+                      skip_pending=skip_pending)
+    except HealError as e:
+        console.print(f"[red]{e}[/]")
+        raise typer.Exit(1)
+    color = {"threshold_met": "green", "awaiting_approval": "yellow"}.get(st.status, "red")
+    console.print(f"\n[{color}]{st.status}[/]: {st.stop_reason}")
+    console.print(f"branch {st.branch} in {st.clone_path}")
+    for f in st.fixes:
+        console.print(f"  it{f.iteration} {f.status:<12} {f.summary[:80]}  {(f.commit or '')[:10]}")
+        if f.status == "applied":
+            for path in f.files:
+                console.print(f"      changed: {path}")
+    if st.status == "awaiting_approval":
+        run_dir = st.current.run_dir
+        console.print(f"\nApprove in the UI or with `guardian approve {run_dir} <plan> --hash <hash> --reviewer <name>`,"
+                      f" then run `guardian heal {target}` again (or pass --reviewer to approve here).")
+    console.print(f"Heal report: [bold]{Path(out) / 'heal' / st.repo / 'heal.html'}[/]")
+
+
+@app.command()
 def plans(run_dir: Path = typer.Argument(...)):
     """List Day 2 plans with their candidates, finalists and hashes."""
     from .day2.decisions import open_d2

@@ -3,61 +3,216 @@
   "vulns": [
     {
       "id": "GHSA-xvch-5gv4-984h",
-      "aliases": ["CVE-2021-44906"],
+      "aliases": [
+        "CVE-2021-44906"
+      ],
       "summary": "Prototype Pollution in minimist",
       "published": "2022-03-18T00:01:09Z",
-      "severity": [{"type": "CVSS_V3", "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}],
+      "severity": [
+        {
+          "type": "CVSS_V3",
+          "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+        }
+      ],
       "affected": [
-        {"package": {"ecosystem": "npm", "name": "minimist"},
-         "ranges": [{"type": "SEMVER", "events": [{"introduced": "0"}, {"fixed": "0.2.4"}]},
-                    {"type": "SEMVER", "events": [{"introduced": "1.0.0"}, {"fixed": "1.2.6"}]}]}
-      ]
+        {
+          "package": {
+            "ecosystem": "npm",
+            "name": "minimist"
+          },
+          "ranges": [
+            {
+              "type": "SEMVER",
+              "events": [
+                {
+                  "introduced": "0"
+                },
+                {
+                  "fixed": "0.2.4"
+                }
+              ]
+            },
+            {
+              "type": "SEMVER",
+              "events": [
+                {
+                  "introduced": "1.0.0"
+                },
+                {
+                  "fixed": "1.2.6"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "details": "minimist's argument parser can be tricked into modifying `Object.prototype` through crafted argument names such as `--__proto__.x` or constructor/prototype keys, which can lead to prototype pollution in the calling program.\n\n### Workarounds\nDo not pass untrusted input to `minimist()`; validate argument names before parsing."
     },
     {
       "id": "GHSA-vh95-rmgr-6w4m",
-      "aliases": ["CVE-2020-7598"],
+      "aliases": [
+        "CVE-2020-7598"
+      ],
       "summary": "Prototype Pollution in minimist",
       "published": "2020-04-03T21:48:32Z",
-      "severity": [{"type": "CVSS_V3", "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:L/A:L"}],
+      "severity": [
+        {
+          "type": "CVSS_V3",
+          "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:L/A:L"
+        }
+      ],
       "affected": [
-        {"package": {"ecosystem": "npm", "name": "minimist"},
-         "ranges": [{"type": "SEMVER", "events": [{"introduced": "0"}, {"fixed": "0.2.1"}]},
-                    {"type": "SEMVER", "events": [{"introduced": "1.0.0"}, {"fixed": "1.2.3"}]}]}
-      ]
+        {
+          "package": {
+            "ecosystem": "npm",
+            "name": "minimist"
+          },
+          "ranges": [
+            {
+              "type": "SEMVER",
+              "events": [
+                {
+                  "introduced": "0"
+                },
+                {
+                  "fixed": "0.2.1"
+                }
+              ]
+            },
+            {
+              "type": "SEMVER",
+              "events": [
+                {
+                  "introduced": "1.0.0"
+                },
+                {
+                  "fixed": "1.2.3"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "details": "Crafted arguments using `constructor` or `__proto__` keys let minimist add or modify properties of `Object.prototype`."
     },
     {
       "id": "GHSA-m2qf-hxjv-5gpq",
-      "aliases": ["CVE-2023-30861"],
+      "aliases": [
+        "CVE-2023-30861"
+      ],
       "summary": "Flask vulnerable to possible disclosure of permanent session cookie due to missing Vary: Cookie header",
       "published": "2023-05-02T18:21:12Z",
-      "severity": [{"type": "CVSS_V3", "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"}],
+      "severity": [
+        {
+          "type": "CVSS_V3",
+          "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"
+        }
+      ],
       "affected": [
-        {"package": {"ecosystem": "PyPI", "name": "flask"},
-         "ranges": [{"type": "ECOSYSTEM", "events": [{"introduced": "0"}, {"fixed": "2.2.5"}]},
-                    {"type": "ECOSYSTEM", "events": [{"introduced": "2.3.0"}, {"fixed": "2.3.2"}]}]}
-      ]
+        {
+          "package": {
+            "ecosystem": "PyPI",
+            "name": "flask"
+          },
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                },
+                {
+                  "fixed": "2.2.5"
+                }
+              ]
+            },
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "2.3.0"
+                },
+                {
+                  "fixed": "2.3.2"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "details": "When all of these hold, a caching proxy may cache a response carrying one client's session cookie and send it to other clients: the app runs behind a caching proxy that does not strip cookies or ignore responses with cookies; the app sets `session.permanent = True`; the app does not access or modify the session during the request; `SESSION_REFRESH_EACH_REQUEST` is enabled (the default); the app does not set a `Cache-Control` header marking the page private.\n\n### Workarounds\nSet `Cache-Control: private` (or `Vary: Cookie`) on responses that use the session, or configure the proxy not to cache responses that set cookies."
     },
     {
       "id": "GHSA-j8r2-6x86-q33q",
-      "aliases": ["CVE-2023-32681"],
+      "aliases": [
+        "CVE-2023-32681"
+      ],
       "summary": "Unintended leak of Proxy-Authorization header in requests",
       "published": "2023-05-22T20:36:32Z",
-      "severity": [{"type": "CVSS_V3", "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:H/I:N/A:N"}],
+      "severity": [
+        {
+          "type": "CVSS_V3",
+          "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:H/I:N/A:N"
+        }
+      ],
       "affected": [
-        {"package": {"ecosystem": "PyPI", "name": "requests"},
-         "ranges": [{"type": "ECOSYSTEM", "events": [{"introduced": "2.3.0"}, {"fixed": "2.31.0"}]}]}
-      ]
+        {
+          "package": {
+            "ecosystem": "PyPI",
+            "name": "requests"
+          },
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "2.3.0"
+                },
+                {
+                  "fixed": "2.31.0"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "details": "When a request is redirected to an HTTPS endpoint through a proxy, requests can forward the `Proxy-Authorization` header to the destination server, leaking proxy credentials."
     },
     {
       "id": "GHSA-9wx4-h78v-vm56",
-      "aliases": ["CVE-2024-35195"],
+      "aliases": [
+        "CVE-2024-35195"
+      ],
       "summary": "Requests Session object does not verify requests after making first request with verify=False",
       "published": "2024-05-20T20:15:00Z",
-      "severity": [{"type": "CVSS_V3", "score": "CVSS:3.1/AV:L/AC:H/PR:H/UI:R/S:U/C:H/I:H/A:N"}],
+      "severity": [
+        {
+          "type": "CVSS_V3",
+          "score": "CVSS:3.1/AV:L/AC:H/PR:H/UI:R/S:U/C:H/I:H/A:N"
+        }
+      ],
       "affected": [
-        {"package": {"ecosystem": "PyPI", "name": "requests"},
-         "ranges": [{"type": "ECOSYSTEM", "events": [{"introduced": "0"}, {"fixed": "2.32.0"}]}]}
-      ]
+        {
+          "package": {
+            "ecosystem": "PyPI",
+            "name": "requests"
+          },
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                },
+                {
+                  "fixed": "2.32.0"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "details": "If the first request in a `Session` is made with `verify=False`, later requests to the same host keep skipping certificate verification even when `verify` is changed."
     }
   ]
 }

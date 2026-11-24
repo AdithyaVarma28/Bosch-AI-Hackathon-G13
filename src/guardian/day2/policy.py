@@ -176,7 +176,8 @@ def evaluate_verify(policy: Policy, vi: VerifyInput) -> list[PolicyResult]:
     res: list[PolicyResult] = []
     today = vi.today or date.today()
     target_pkgs = {package_name(f.subject) for f in vi.after_findings if f.id in vi.target_ids}
-    relevant = [f for f in vi.after_findings if f.id in vi.target_ids or f.id in vi.new_finding_ids]
+    from .simulate import is_historical   # past-commit events never "resolve"; they are reported as remaining risk
+    relevant = [f for f in vi.after_findings if (f.id in vi.target_ids or f.id in vi.new_finding_ids) and not is_historical(f)]
     ev = [vi.rescan.evidence_id] if vi.rescan and vi.rescan.evidence_id else []
 
     def add(r: dict, passed: bool, detail: str, evidence: list[str] | None = None) -> None:

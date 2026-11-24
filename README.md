@@ -143,6 +143,32 @@ ingest → … → vuln_intel ‖ change_anomaly ‖ … → correlator → evid
 - Outputs in `<run_dir>/day2/`: `report.json`, `remediation.html`, `priority.json`, `investigations.json`, `remediation_plan.json`, `verification/*.json`, `vex.cdx.json`, `patches/`. The Day 1 `report.json` fields `remediation`, `validation` and `vex` point to them.
 - API: `POST /runs` runs the whole pipeline (`"remediate": false` for detection only); `POST /runs/{id}/remediate` resumes Day 2, `GET /runs/{id}/plans`, `POST /runs/{id}/decisions`, `POST /runs/{id}/patches`, `GET /runs/{id}/remediation(.html)`.
 
+## Heal agent: apply approved fixes to a cloned repo, loop until a threshold
+
+`guardian heal` closes the loop on a repository under `output/clones/` (`src/guardian/day2/heal.py`):
+
+```
+observe (scan clone: detection + Day 2 plans) → assess (threshold?) → decide (agent)
+  → await_approval (human)  → validate (Day 2 sandbox S14-S16) → apply to the clone + verify in place
+  → on failure: rollback (git reset on the heal branch) + next validated finalist, max --max-retries
+  → next_iteration (rescan the changed clone, re-plan) … → stop: threshold met | iteration budget | no progress | nothing actionable
+```
+
+- **Human in the loop:** nothing is applied without an approval of the exact plan hash. With `--reviewer <name>` the agent asks in the terminal; without it, it pauses and you approve in the UI/API/CLI, then run `heal` again (state is persisted in `output/heal/<clone>/heal_state.json`).
+- **Only the remedy:** the diff produced on the clone must hash to the approved candidate's diff, or it is reverted. If an earlier fix in the same iteration changed the same file, the plan is **deferred**: it is re-planned on the new tree next iteration and needs a fresh approval.
+- **Where changes go:** a new branch `guardian/heal-<time>` in the clone, one commit per fix (plan hash, reviewer, verdict in the message). The original branch is untouched, nothing is pushed, and the clone must be clean. Note: `guardian scan <github-url>` re-clones and wipes `output/clones/<repo>`; scan the clone path instead.
+- **Verification:** Day 2 validation in a throwaway sandbox (verdict must be in `--require-verified` / accepted set), then a Day 1 rescan of the clone itself after each commit: target gone and no new P0/P1, or rollback.
+- **Agentic control:** rules compute the allowed actions and a default; with an LLM configured, the model picks among the allowed actions only, with a reason. Every decision is journaled in `heal.html`.
+- **Thresholds:** `--max-iterations 3`, `--max-retries 2`, `--bands P0,P1`, `--max-remaining 0`, `--count-signals` (count non-CVE findings too).
+
+```powershell
+.\.venv\Scripts\guardian.exe heal --list
+.\.venv\Scripts\guardian.exe heal miguelgrinberg__microblog --reviewer <name> --sandbox none
+.\.venv\Scripts\guardian.exe heal miguelgrinberg__microblog          # resume after approving in the UI
+```
+
+API: `POST /heal {"repo": "<clone>"}` (pauses at the gate; approve with `POST /runs/{id}/decisions`, then POST again), `GET /heal/{repo}`, `GET /heal/{repo}/report.html`.
+
 ## Tests
 
 ```powershell

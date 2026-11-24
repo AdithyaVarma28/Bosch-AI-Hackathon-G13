@@ -54,6 +54,7 @@ class PlanInput:
     findings: list[Finding]
     scores: dict[str, RiskScore]
     investigations: dict[str, Investigation] = field(default_factory=dict)
+    advisories: dict = field(default_factory=dict)          # finding id -> AdvisoryAssessment
 
     @property
     def resolvable(self) -> list[str]:
@@ -79,7 +80,7 @@ def plan_key(ctx: RunContext, f: Finding) -> tuple[str, str]:
 
 
 def build_queue(ctx: RunContext, findings: list[Finding], scores: list[RiskScore], investigations: dict[str, Investigation],
-                max_queue: int, only: list[str] | None = None) -> list[PlanInput]:
+                max_queue: int, only: list[str] | None = None, advisories: dict | None = None) -> list[PlanInput]:
     by_id = {f.id: f for f in findings}
     sc = {s.finding_id: s for s in scores}
     groups: dict[str, PlanInput] = {}
@@ -89,7 +90,7 @@ def build_queue(ctx: RunContext, findings: list[Finding], scores: list[RiskScore
             continue
         key, target = plan_key(ctx, f)
         g = groups.setdefault(key, PlanInput(plan_key=key, title=f.title, target=target, findings=[], scores={},
-                                             investigations=investigations))
+                                             investigations=investigations, advisories=advisories or {}))
         g.findings.append(f)
         g.scores[f.id] = s
     out = []
@@ -271,6 +272,14 @@ def vuln_candidates(ctx: RunContext, plan: PlanInput, reg: RegistryClient, adv: 
                              rollback=f"git revert the remediation commit; restores {name}@{ver} in {', '.join(sorted({e.file for e in edits}))}"))
     else:
         out += _transitive_candidates(ctx, plan, reg, adv, eco, name, ver, safe, closes, adv_ids, note)
+    # Advisory Analyst: documented workarounds / configuration mitigations become MANUAL candidates (no edits)
+    for f in vulns:
+        a = plan.advisories.get(f.id)
+        for m in (a.mitigations if a else [])[:2]:
+            out.append(_cand(plan, "mitigate", f"Mitigate {f.signals.get('advisory_id')} without upgrading ({m.kind}): {m.text[:160]}",
+                             [], package=name, ecosystem=eco, from_version=ver, compatibility="low",
+                             compatibility_notes=["manual change: apply and verify by hand, or upgrade instead"],
+                             evidence_ids=m.evidence_ids[:2]))
     if not safe:
         alts = ((_data().get("alternatives") or {}).get(eco) or {}).get(name.lower())
         level = next((s.reachability for s in plan.scores.values()), "unknown")
@@ -583,7 +592,24 @@ def generate(ctx: RunContext, plan: PlanInput, reg: RegistryClient, adv: Advisor
             seen.add(c.id)
             uniq.append(c)
     uniq.append(escalate_candidate(plan))
+    for c in uniq:     # reviewer-visible comment next to every change in files that allow comments
+        for e in c.edits:
+            if e.kind in NOTE_KINDS and "note" not in e.params:
+                e.params["note"] = note_for(c)
     return uniq
+
+
+NOTE_KINDS = {"pip_set_pin", "pip_add_pin", "docker_from", "gha_pin", "gha_permissions"}
+
+
+def note_for(c: RemediationCandidate) -> str:
+    """e.g. 'guardian: flask 2.0.1 -> 2.2.5 (fixes GHSA-m2qf-hxjv-5gpq)'."""
+    m = re.search(r"fixes ([A-Z]+-[\w-]+(?:, [A-Z]+-[\w-]+)*)", c.summary)
+    what = {"upgrade": "upgraded", "pin": "pinned", "parent_upgrade": "upgraded parent", "override": "overridden",
+            "update_base_image": "base image changed", "pin_action": "action pinned to commit",
+            "restrict_permissions": "least-privilege permissions"}.get(c.action, c.action)
+    change = f"{c.package} {c.from_version} -> {c.to_version}" if c.package and c.to_version and c.from_version else (c.package or "")
+    return f"guardian: {what} {change}".strip() + (f" (fixes {m.group(1)})" if m else "")
 
 
 # ----------------------------------------------------------------------------- simulate + rank (tournament round 1)
@@ -730,5 +756,29 @@ def build_plan(ctx: RunContext, plan_in: PlanInput, reg: RegistryClient, adv: Ad
     if not finalists:
         plan.status = "escalated"
     plan.rationale, plan.rationale_by = rationale(ctx, plan)
+    plan.rationale += advisory_claims(plan_in)
     plan.plan_hash = compute_plan_hash(plan)
     return plan
+
+
+def advisory_claims(plan_in: PlanInput) -> list[Claim]:
+    """The Advisory Analyst's answers, carried into the plan the reviewer approves (already Verifier-checked)."""
+    out = []
+    for f in plan_in.findings:
+        a = plan_in.advisories.get(f.id)
+        if not a:
+            continue
+        for label, ans in (("relevance", a.relevance), ("feature", a.feature_usage), ("affected", a.affects_installed),
+                           ("safest action", a.recommended)):
+            if ans.verifier_status == "rejected":
+                continue
+            ctype = ans.basis if ans.basis in ("fact", "inference", "unknown") else "unknown"
+            if ctype == "fact" and not ans.evidence_ids:
+                ctype = "inference"
+            out.append(Claim(text=f"{a.advisory_id} {label}: {ans.value}: {ans.text}"[:600], type=ctype,
+                             evidence_ids=[e for e in ans.evidence_ids if e], confidence="medium",
+                             verifier_status=ans.verifier_status if ans.verifier_status in ("verified", "downgraded") else "pending"))
+        if a.missing_evidence:
+            out.append(Claim(text=f"{a.advisory_id} missing evidence: " + "; ".join(a.missing_evidence)[:500], type="unknown",
+                             confidence="medium", verifier_status="verified"))
+    return out

@@ -79,6 +79,12 @@ def _npm_registry_url(name: str, version: str) -> str:
     return f"https://registry.npmjs.org/{name}/-/{base}-{version}.tgz"
 
 
+def _note(e: Edit) -> str:
+    """Single-line reviewer note written next to the change ('guardian: ...'); empty when none."""
+    n = " ".join(str(e.params.get("note") or "").split())[:160]
+    return n
+
+
 def apply_edit(root: Path, e: Edit) -> None:
     p = _confine(root, e.file)
     k, a = e.kind, e.params
@@ -161,15 +167,15 @@ def apply_edit(root: Path, e: Edit) -> None:
                 hit = True
                 if k == "pip_remove":
                     continue
-                if k == "pip_set_pin":
-                    ln = f"{m.group(1)}{m.group(2)}{m.group(3) or ''}=={a['version']}{m.group(7)}{eol}"
-                elif k == "pip_add_pin":
-                    ln = f"{m.group(1)}{m.group(2)}{m.group(3) or ''}=={a['version']}{m.group(7)}{eol}"
+                tail = m.group(7).rstrip()
+                if _note(e):
+                    tail = f"{tail} | {_note(e)}" if "#" in tail else f"{tail}  # {_note(e)}"
+                ln = f"{m.group(1)}{m.group(2)}{m.group(3) or ''}=={a['version']}{tail}{eol}"
             out.append(ln)
         if k == "pip_add_pin" and not hit:
             if out and not out[-1].endswith(("\n", "\r\n")):
                 out[-1] += "\n"
-            comment = f"  # {a['comment']}" if a.get("comment") else ""
+            comment = f"  # {_note(e) or a.get('comment')}" if (_note(e) or a.get("comment")) else ""
             out.append(f"{a['name']}=={a['version']}{comment}\n")
         elif not hit and k != "pip_add_pin":
             raise PatchError(f"{a['name']} not found in {e.file}")
@@ -184,18 +190,22 @@ def apply_edit(root: Path, e: Edit) -> None:
             raise PatchError(f"FROM {a['old']} not found in {e.file}")
         i = targets[0]
         lines[i] = rx.sub(lambda m: m.group(1) + a["new"] + m.group(2), lines[i], count=1)
+        if _note(e):
+            indent = lines[i][:len(lines[i]) - len(lines[i].lstrip())]
+            lines.insert(i, f"{indent}# {_note(e)}\n")
         _write(p, "".join(lines))
     elif k == "gha_pin":
         text = _read(p)
         rx = re.compile(r"(uses:\s*['\"]?)" + re.escape(a["uses_old"]) + r"(['\"]?)(\s*(#.*)?)$", re.M)
-        new, n = rx.subn(lambda m: f"{m.group(1)}{a['uses_new']}{m.group(2)} # {a['uses_old'].split('@')[-1]}", text)
+        tag = a['uses_old'].split('@')[-1]
+        new, n = rx.subn(lambda m: f"{m.group(1)}{a['uses_new']}{m.group(2)} # {tag}" + (f" | {_note(e)}" if _note(e) else ""), text)
         if not n:
             raise PatchError(f"uses: {a['uses_old']} not found in {e.file}")
         _write(p, new)
     elif k == "gha_permissions":
         text = _read(p)
         perms = a.get("permissions") or {"contents": "read"}
-        block = "permissions:\n" + "".join(f"  {kk}: {vv}\n" for kk, vv in perms.items())
+        block = (f"# {_note(e)}\n" if _note(e) else "") + "permissions:\n" + "".join(f"  {kk}: {vv}\n" for kk, vv in perms.items())
         rx = re.compile(r"^permissions:[ \t]*\S[^\n]*\n", re.M)
         if rx.search(text):
             new = rx.sub(block, text, count=1)
@@ -237,6 +247,36 @@ def unified_diff(original_root: Path, patched_root: Path, files: list[str]) -> s
         out += difflib.unified_diff(a, b, fromfile=f"a/{rel}", tofile=f"b/{rel}", n=2)
     text = "".join(out)
     return text if text.endswith("\n") or not text else text + "\n"
+
+
+def snapshot(root: Path, files: list[str]) -> dict[str, str | None]:
+    """Contents before an in-place edit (None = file did not exist)."""
+    out = {}
+    for rel in files:
+        p = _confine(Path(root), rel)
+        out[rel] = p.read_text(encoding="utf-8") if p.exists() else None
+    return out
+
+
+def unified_diff_from(before: dict[str, str | None], root: Path, files: list[str]) -> str:
+    """Same format as unified_diff, with the original side taken from a snapshot (in-place edits)."""
+    out = []
+    for rel in sorted(set(files)):
+        a = (before.get(rel) or "").splitlines(keepends=True)
+        b = _read(Path(root) / rel).splitlines(keepends=True)
+        out += difflib.unified_diff(a, b, fromfile=f"a/{rel}", tofile=f"b/{rel}", n=2)
+    text = "".join(out)
+    return text if text.endswith("\n") or not text else text + "\n"
+
+
+def restore(root: Path, before: dict[str, str | None]) -> None:
+    for rel, text in before.items():
+        p = _confine(Path(root), rel)
+        if text is None:
+            if p.exists():
+                p.unlink()
+        else:
+            _write(p, text)
 
 
 def diff_sha(diff: str) -> str:

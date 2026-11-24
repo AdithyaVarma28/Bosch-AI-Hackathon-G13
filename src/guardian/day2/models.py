@@ -61,6 +61,12 @@ class Investigation(BaseModel):
     verdict: Literal["likely_malicious", "suspicious", "benign_change", "inconclusive"] = "inconclusive"
     verdict_reason: str = ""
     generated_by: str = "rule-based"
+    # agentic investigation (S11 Threat Investigator agent)
+    rule_verdict: str | None = None          # deterministic baseline label
+    verdict_by: str = "rules"                # who set the final label: rules | <llm name>
+    agent_reason: str = ""
+    guardrail_notes: list[str] = Field(default_factory=list)
+    tool_calls: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class Edit(BaseModel):
@@ -87,7 +93,7 @@ class RemediationCandidate(BaseModel):
     id: str
     plan_key: str
     action: Literal["upgrade", "parent_upgrade", "override", "pin", "replace", "remove", "update_base_image", "block",
-                    "remove_script", "restore_lock_source", "pin_action", "restrict_permissions", "escalate"]
+                    "remove_script", "restore_lock_source", "pin_action", "restrict_permissions", "mitigate", "escalate"]
     package: str | None = None
     ecosystem: str | None = None
     from_version: str | None = None
@@ -294,3 +300,40 @@ class VerificationReport(BaseModel):
     remaining_risk: list[dict[str, Any]] = Field(default_factory=list)
     accepted_risk: list[dict[str, Any]] = Field(default_factory=list)
     timeline: list[TimelineEntry] = Field(default_factory=list)
+
+
+class AdvisoryAnswer(BaseModel):
+    """One of the six questions, answered with a typed claim (fact cites raw evidence; inference labelled; unknown)."""
+    question: str
+    value: str                                   # enum value for the question (see ADVISORY_QUESTIONS)
+    text: str
+    basis: Literal["fact", "inference", "unknown"] = "unknown"
+    evidence_ids: list[str] = Field(default_factory=list)
+    verifier_status: str = "pending"
+    by: str = "rules"
+
+
+class Mitigation(BaseModel):
+    kind: Literal["workaround", "configuration", "disable_feature"]
+    text: str
+    evidence_ids: list[str] = Field(default_factory=list)
+    by: str = "rules"
+
+
+class AdvisoryAssessment(BaseModel):
+    """Advisory Analyst output for one confirmed advisory (Day 2, between S11 and S12)."""
+    finding_id: str
+    advisory_id: str
+    package: str
+    version: str | None = None
+    relevance: AdvisoryAnswer                    # Q1 relevant to how THIS app uses the package?
+    feature_usage: AdvisoryAnswer                # Q2 vulnerable feature enabled / unused?
+    mitigations: list[Mitigation] = Field(default_factory=list)   # Q3 workaround / configuration mitigation
+    mitigation_answer: AdvisoryAnswer | None = None
+    affects_installed: AdvisoryAnswer            # Q4 installed version + usage path affected?
+    usage_paths: list[list[str]] = Field(default_factory=list)
+    recommended: AdvisoryAnswer                  # Q5 upgrade | pin | disable_feature | config_mitigation | accept_risk_temporarily
+    missing_evidence: list[str] = Field(default_factory=list)     # Q6
+    tool_calls: list[dict[str, Any]] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+    generated_by: str = "rules"

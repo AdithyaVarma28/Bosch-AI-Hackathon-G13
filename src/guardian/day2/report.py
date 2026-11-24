@@ -60,7 +60,13 @@ def write_report(dc) -> Path:
     pol = d2.get("policy") or {}
     findings = ctx.store.list_findings()
     used_ev: set[str] = set()
+    for a in dc.advisories.values():
+        for ans in (a.relevance, a.feature_usage, a.affects_installed, a.recommended, a.mitigation_answer):
+            if ans:
+                used_ev |= {e for e in ans.evidence_ids if e}
+        used_ev |= {e for m in a.mitigations for e in m.evidence_ids} | {c.get('evidence_id') for c in a.tool_calls if c.get('evidence_id')}
     for inv in dc.investigations.values():
+        used_ev |= {t.get('evidence_id') for t in inv.tool_calls if t.get('evidence_id')}
         used_ev |= {e for c in inv.checks for e in c.evidence_ids} | {e for c in inv.claims for e in c.evidence_ids}
     for p in plans:
         used_ev |= {e for c in p.candidates for e in c.evidence_ids} | {e for c in p.rationale for e in c.evidence_ids}
@@ -88,6 +94,7 @@ def write_report(dc) -> Path:
         "policy": {**pol, "posture": posture(dc.policy, findings, dc.investigations)},
         "priority": [s.model_dump() for s in dc.scores],
         "investigations": {k: v.model_dump() for k, v in dc.investigations.items()},
+        "advisories": {k: v.model_dump() for k, v in dc.advisories.items()},
         "plans": [p.model_dump() for p in plans],
         "plan_revisions": [{"plan_key": p.plan_key, "revision": p.revision, "plan_hash": p.plan_hash, "parent_hash": p.parent_hash,
                             "status": p.status, "finalists": p.finalists} for p in all_revs],
@@ -131,10 +138,15 @@ def by_finding(dc, plans, reports) -> dict:
         r = rep_of.get(p.plan_key) if p else None
         rec = p.candidate(p.recommended) if p and p.recommended else None
         inv = dc.investigations.get(s.finding_id)
+        adv = dc.advisories.get(s.finding_id)
         out[s.finding_id] = {"score": s.total, "bucket": s.bucket, "confidence": s.confidence, "breakdown": s.breakdown(),
                              "plan_key": p.plan_key if p else None, "plan_status": p.status if p else None,
                              "recommended": rec.summary if rec else None, "verdict": r.verdict if r else None,
-                             "investigation": f"{inv.verdict.replace('_', ' ')} ({inv.verdict_reason})" if inv else None}
+                             "investigation": f"{inv.verdict.replace('_', ' ')} ({inv.verdict_reason})" if inv else None,
+                             "advisory": {"relevance": adv.relevance.value, "feature_usage": adv.feature_usage.value,
+                                          "affects_installed": adv.affects_installed.value, "recommended": adv.recommended.value,
+                                          "mitigations": [m.text[:200] for m in adv.mitigations][:2],
+                                          "missing": adv.missing_evidence[:4], "by": adv.generated_by} if adv else None}
     return out
 
 
@@ -199,7 +211,7 @@ const ev=ids=>(ids||[]).map(i=>R.evidence[i]?`<details><summary class="mono">${e
 const claims=cs=>(cs||[]).filter(c=>c.verifier_status!=="rejected").map(c=>`<div class="claim ${esc(c.type)}"><b>${esc(c.type)}</b> ${esc(c.text)} <small>(${esc(c.confidence)}, ${esc(c.verifier_status)})</small>${ev(c.evidence_ids)}</div>`).join("");
 $("repo").textContent=R.repo.name;
 $("meta").textContent=`run ${R.run_id} · ${R.generated_at} · sandbox ${R.settings.sandbox} · advisories ${R.settings.advisories} · ${R.settings.llm} · policy ${String((R.policy||{}).sha256||"").slice(0,12)}`;
-const tabs={overview:"Overview",queue:"1 Prioritize",investigate:"2 Investigate",plans:"3 Remediate",approve:"Approve",validate:"4 Validate",verify:"5 Verify & report",audit:"Audit trail"};
+const tabs={overview:"Overview",queue:"1 Prioritize",investigate:"2 Investigate",advisories:"Advisory analysis",plans:"3 Remediate",approve:"Approve",validate:"4 Validate",verify:"5 Verify & report",audit:"Audit trail"};
 let cur="overview";
 function nav(){$("nav").innerHTML=Object.entries(tabs).map(([k,v])=>`<button data-t="${k}" class="${k===cur?"on":""}">${v}</button>`).join("");
  $("nav").onclick=e=>{if(e.target.dataset.t){cur=e.target.dataset.t;nav();render()}}}
@@ -218,7 +230,9 @@ function overview(){const s=R.summary;const fix=R.priority.filter(x=>x.bucket===
 function queue(){return `<section class="card"><h2>Prioritized risks</h2><p class="sub">Score 0–100 = severity + exploitability + reachability + exposure + production use + criticality (+ policy). Confidence is data quality, not risk.</p><table><tr><th>Bucket</th><th>Band</th><th>Score</th><th>Finding</th><th>Confidence</th></tr>`+
  R.priority.map(s=>`<tr><td>${esc(s.bucket.replace("_"," "))}${s.needs_human?'<span class="tag">needs human look</span>':""}</td><td>${band(s.band)}</td><td><b>${s.total}</b></td><td>${esc(s.title)}<details><summary>breakdown</summary><table>${s.factors.map(f=>`<tr><td>${esc(f.name)}</td><td>${f.points>=0?"+":""}${f.points}</td><td class="sub">${esc(f.detail)}</td></tr>`).join("")}</table><div class="sub">${esc(s.bucket_reason)}${s.policy_violations.length?" · policy: "+esc(s.policy_violations.join(", ")):""}</div></details></td><td>${esc(s.confidence)}<div class="sub">${esc(s.confidence_reasons.join("; "))}</div></td></tr>`).join("")+`</table></section>`}
 function investigate(){const xs=Object.values(R.investigations);if(!xs.length)return `<section class="card">No non-CVE signals needed investigation.</section>`;
- return xs.map(i=>`<section class="card"><h2>${esc(i.subject)} <span class="tag">${esc(i.signal)}</span> ${vb(i.verdict.replace("_"," "))}</h2><div class="sub">${esc(i.verdict_reason)} · ${esc(i.generated_by)}</div>
+ return xs.map(i=>`<section class="card"><h2>${esc(i.subject)} <span class="tag">${esc(i.signal)}</span> ${vb(i.verdict.replace("_"," "))}</h2><div class="sub">${esc(i.verdict_reason)} · label by <b>${esc(i.verdict_by||"rules")}</b> · rule baseline: ${esc(i.rule_verdict||i.verdict)} · ${esc(i.generated_by)}</div>
+ ${(i.guardrail_notes||[]).map(n=>`<div class="claim unknown"><b>guardrail</b> ${esc(n)}</div>`).join("")}
+ ${(i.tool_calls||[]).length?`<details><summary>agent tool calls (${i.tool_calls.length})</summary>${i.tool_calls.map(t=>`<div class="mono">${esc(t.tool)}(${esc(JSON.stringify(t.args))}) — ${esc(t.why||"")}</div>${ev([t.evidence_id])}`).join("")}</details>`:""}
  <h3>Checks</h3><table><tr><th>Check</th><th>Result</th><th>Detail</th></tr>${i.checks.map(c=>`<tr><td>${esc(c.name)}${c.strong?'<span class="tag">strong</span>':""}</td><td>${c.status==="pass"?ok(true):c.status==="fail"?ok(false):'<span class="unk">unknown</span>'}</td><td>${esc(c.detail)}${ev(c.evidence_ids)}</td></tr>`).join("")}</table>
  ${i.diffs.length?`<h3>Version / lockfile comparison</h3><pre class="mono">${esc(JSON.stringify(i.diffs,null,1))}</pre>`:""}
  <h3>Verified evidence vs AI/rule inference</h3>${claims(i.claims)}</section>`).join("")}
@@ -258,6 +272,19 @@ function verify(){if(!R.verification.length)return `<section class="card">No ver
  ${r.corrections.length?`<h3>Self-correction</h3>${r.corrections.map(c=>`<div class="claim inference">round ${c.round}: ${esc(c.failure_class)} → ${esc(c.outcome)} · ${esc(c.detail)}</div>`).join("")}`:""}
  <h3>6 Audit trail</h3><div class="tl">${r.timeline.map(t=>`<div><span class="sub mono">${esc(t.at)}</span> <b>${esc(t.stage)}</b> ${esc(t.event)} <span class="sub">${esc(t.actor)}</span><div class="sub">${esc(t.detail)}</div></div>`).join("")}</div></section>`}).join("")}
 function audit(){return `<section class="card"><h2>Audit trail (append-only)</h2><div class="tl">${R.timeline.map(t=>`<div><span class="sub mono">${esc(t.at)}</span> <b>${esc(t.stage)}</b> ${esc(t.event)} <span class="sub">${esc(t.actor)}${t.plan_key?" · "+esc(t.plan_key):""}</span><div class="sub">${esc(t.detail)}</div>${ev(t.evidence_ids)}</div>`).join("")}</div></section>`}
-const V={overview,queue,investigate,plans,approve,validate,verify,audit};
-function render(){$("main").innerHTML=V[cur]()}nav();render();
+function ansRow(label,a){if(!a)return "";return `<tr><td>${esc(label)}<div class="sub">${esc(a.question)}</div></td><td><b>${esc(a.value)}</b></td>
+ <td><div class="claim ${esc(a.basis)}"><b>${esc(a.basis)}</b> ${esc(a.text)} <small>(${esc(a.verifier_status)}, ${esc(a.by)})</small>${ev(a.evidence_ids)}</div></td></tr>`}
+function advisories(){const xs=Object.values(R.advisories||{});if(!xs.length)return `<section class="card">No confirmed advisories to analyse.</section>`;
+ return xs.map(a=>`<section class="card"><h2>${esc(a.advisory_id)} · ${esc(a.package)}@${esc(a.version)} <span class="tag">${esc(a.generated_by)}</span></h2>
+ <table><tr><th>Question</th><th>Answer</th><th>Evidence</th></tr>${ansRow("Relevance to this app",a.relevance)}${ansRow("Vulnerable feature",a.feature_usage)}
+ ${ansRow("Workaround / mitigation",a.mitigation_answer)}${ansRow("Installed version + usage path",a.affects_installed)}${ansRow("Safest remediation",a.recommended)}
+ <tr><td>Missing evidence<div class="sub">What evidence is still missing?</div></td><td colspan=2>${(a.missing_evidence||[]).map(m=>`<div class="claim unknown">${esc(m)}</div>`).join("")||"—"}</td></tr></table>
+ ${(a.mitigations||[]).length?`<h3>Mitigations</h3>${a.mitigations.map(m=>`<div class="claim inference"><b>${esc(m.kind)}</b> ${esc(m.text)} <small>${esc(m.by)}</small>${ev(m.evidence_ids)}</div>`).join("")}`:""}
+ ${(a.usage_paths||[]).length?`<h3>Usage paths</h3>${a.usage_paths.map(p=>`<div class="mono">${p.map(esc).join(" → ")}</div>`).join("")}`:""}
+ ${(a.notes||[]).length?`<div class="sub">${esc(a.notes.join(" · "))}</div>`:""}${(a.tool_calls||[]).length?`<details><summary>${a.tool_calls.length} tool call(s)</summary><pre class="mono">${esc(JSON.stringify(a.tool_calls,null,1))}</pre></details>`:""}</section>`).join("")}
+const V={overview,queue,investigate,advisories,plans,approve,validate,verify,audit};
+function render(){$("main").innerHTML=V[cur]()}
+if(new URLSearchParams(location.search).has("embed"))document.querySelector("header").style.display="none";   /* inside the Guardian app */
+const fromHash=()=>{const t=location.hash.slice(1);if(tabs[t]){cur=t;nav();render()}};window.addEventListener("hashchange",fromHash);
+if(tabs[location.hash.slice(1)])cur=location.hash.slice(1);nav();render();
 </script></body></html>"""
