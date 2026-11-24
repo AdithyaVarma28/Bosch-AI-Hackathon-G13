@@ -505,6 +505,10 @@ def create_web_app(root: str | Path):
                              "triage": _read(sd.d / "triage.json", {})},
                             headers={"Content-Disposition": f"attachment; filename={scan_id}-report.json"})
 
+    # ------------------------------------------------------------------ Day 2: prioritize, remediate, approve
+    from guardian.day2.api import attach as attach_day2
+    attach_day2(app, lambda sid: data(sid).d)
+
     # ------------------------------------------------------------------ dashboard (ui/) + SPA
     if UI_DIR.exists():
         from fastapi.responses import RedirectResponse

@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="styles.css?v=6">
   <link rel="stylesheet" href="dashboard.css?v=6">
   <link rel="stylesheet" href="risk.css?v=6">
+  <link rel="stylesheet" href="remediate.css?v=1">
 </head>
 <body>
   <div class="app-shell">
@@ -20,9 +21,10 @@
         <button class="nav-item active" data-view="overview"><span class="nav-icon">◫</span>Overview</button>
         <button class="nav-item" data-view="architecture"><span class="nav-icon">⌘</span>Architecture &amp; SBOM<span class="nav-count" id="module-count"></span></button>
         <button class="nav-item" data-view="risk"><span class="nav-icon">⚑</span>Risk detection<span class="nav-count" id="risk-count"></span></button>
+        <button class="nav-item" data-view="remediate"><span class="nav-icon">✚</span>Remediation<span class="nav-count" id="rem-count"></span></button>
         <button class="nav-item" data-view="scan"><span class="nav-icon">＋</span>New scan</button>
       </nav>
-      <div class="sidebar-bottom"><div class="scan-indicator"><span class="live-dot"></span><span><b>Scan complete</b><small id="scan-time">HEAD · 2 min ago</small></span></div><div class="sidebar-foot">SUPPLY CHAIN GUARDIAN <span>stages 1–6</span></div></div>
+      <div class="sidebar-bottom"><div class="scan-indicator"><span class="live-dot"></span><span><b>Scan complete</b><small id="scan-time">HEAD · 2 min ago</small></span></div><div class="sidebar-foot">SUPPLY CHAIN GUARDIAN <span>stages 1–6 · day 2</span></div></div>
     </aside>
 
     <main class="main-area">
@@ -32,6 +34,6 @@
     </main>
   </div>
   <script src="data/demo-data.js?v=6"></script>
-  <script src="app.js?v=6"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>

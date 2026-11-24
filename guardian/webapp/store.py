@@ -16,7 +16,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-STAGES = [("1", "Facts"), ("2", "Code index"), ("3", "Knowledge graph"), ("4", "Vulnerabilities"), ("5", "Anomalies")]
+STAGES = [("1", "Facts"), ("2", "Code index"), ("3", "Knowledge graph"), ("4", "Vulnerabilities"), ("5", "Anomalies"),
+          ("6", "Prioritize & remediate")]
 
 
 def now() -> str:
@@ -219,8 +220,8 @@ class ScanStore:
 
 def run_pipeline(repo: Path, dest: Path, offline: bool = False, llm: str = "auto", osv_dump: Optional[str] = None,
                  log=print, stage=lambda *a, **k: None, emit=lambda e: None, scan_id: Optional[str] = None,
-                 skip_sbom: bool = True) -> None:
-    """Stages 1-5 into ``dest`` (the snapshot folder)."""
+                 skip_sbom: bool = True, day2: bool = True) -> None:
+    """Stages 1-5 (+ Day 2 prioritize & remediate) into ``dest`` (the snapshot folder)."""
     from guardian.adapters import declared_vs_used
     from guardian.stage1_facts.collector import run_stage1_collection
     from guardian.stage2_code.parser import index_repo
@@ -247,3 +248,10 @@ def run_pipeline(repo: Path, dest: Path, offline: bool = False, llm: str = "auto
     stage("5", "running")
     s5 = run_stage5(s4, offline=offline, log=log)
     stage("5", "done", summary=f"{len(s5.state.get('cards', []))} anomaly findings from {len(s5.state.get('signals', []))} signals")
+    if day2:
+        from guardian.day2 import run_day2
+        stage("6", "running")
+        d2 = run_day2(dest, repo=repo, llm=s3.llm, offline=offline, osv_dump=osv_dump, log=log)
+        rems = d2["remediations"]
+        stage("6", "done", summary=f"{len(d2['register'])} findings prioritized, {len(rems)} remediations, "
+                                   f"{sum(1 for r in rems if r.get('tab') == 'decide')} need a decision")

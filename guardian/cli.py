@@ -73,8 +73,9 @@ def scan(
     stage5: bool = typer.Option(True, "--stage5/--no-stage5", help="Run Stage 5 (supply-chain anomalies) after Stage 4"),
     llm: str = typer.Option("auto", "--llm", help="LLM for Stages 3-5: auto | groq | gemini | anthropic | offline"),
     osv_dump: Optional[str] = typer.Option(None, "--osv-dump", help="OSV PyPI all.zip for offline vulnerability matching"),
+    day2: bool = typer.Option(True, "--day2/--no-day2", help="Day 2: prioritize findings and plan remediations after Stage 5"),
 ) -> None:
-    """Stages 1 -> 4: facts.json, code_index.json, summary.json, the Stage 3 knowledge graph, Stage 4 findings."""
+    """Stages 1 -> 5 (+ Day 2): facts.json, code_index.json, summary.json, the Stage 3 knowledge graph, Stage 4 findings."""
     from guardian.adapters import declared_vs_used
     from guardian.stage1_facts.collector import run_stage1_collection
     from guardian.stage2_code.parser import index_repo
@@ -111,6 +112,9 @@ def scan(
                     run_stage5 = None
                 if run_stage5:
                     run_stage5(s4, offline=offline, log=typer.echo)
+                    if day2:
+                        from guardian.day2 import run_day2
+                        run_day2(dest, repo=repo, llm=s3.llm, offline=offline, osv_dump=osv_dump, log=typer.echo)
     typer.echo(f"output: {dest}")
 
 
@@ -128,6 +132,24 @@ def vulns(
 
     run_stage4_from_output(scan_dir, llm_provider="offline" if offline else llm, model=model, offline=offline,
                            osv_dump=osv_dump, images=image or None, log=typer.echo)
+
+
+@app.command()
+def remediate(
+    scan_dir: str = typer.Argument(..., help="Scan folder with Stage 4/5 output (vuln_findings.json, ...)"),
+    repo: Optional[str] = typer.Option(None, "--repo", help="The scanned repository (default: from scan.json / graph.json)"),
+    offline: bool = typer.Option(False, "--offline", help="No network: OSV dump and cached data only"),
+    osv_dump: Optional[str] = typer.Option(None, "--osv-dump", help="OSV PyPI dump for offline version checks"),
+    llm: str = typer.Option("auto", "--llm", help="auto | groq | gemini | anthropic | offline"),
+    agent: bool = typer.Option(False, "--agent", help="Let the remediation agent write first proposals for Critical/High"),
+) -> None:
+    """Day 2: prioritize every finding (SSVC-inspired) and plan remediations with human approval gates."""
+    from guardian.day2 import run_day2
+    from guardian.stage3_knowledge.llm import LLM
+
+    out = Path(scan_dir)
+    model = LLM(provider="offline" if llm == "offline" else None if llm == "auto" else llm, cache_dir=out / ".llm_cache")
+    run_day2(out, repo=repo, llm=model, offline=offline, osv_dump=osv_dump, log=typer.echo, use_agent=agent or None)
 
 
 @app.command()

@@ -353,7 +353,8 @@ class LLM:
         if env:
             self.purposes: Optional[set[str]] = None if env == "all" else {p.strip() for p in env.split(",") if p.strip()}
         else:
-            self.purposes = {"card", "explain"} if isinstance(self.provider, OpenAICompatProvider) else None
+            # Day 2: "prioritize" (2 small JSON calls per serious CVE) and "critic" (1 per patch) are cheap too
+            self.purposes = {"card", "explain", "prioritize", "critic"} if isinstance(self.provider, OpenAICompatProvider) else None
         self.skipped = Counter()
 
     # ------------------------------------------------------------------ state

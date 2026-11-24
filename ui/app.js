@@ -79,7 +79,7 @@
       const s = data.security, sec = (s.vulnerabilities?.length || 0) + (s.anomalies?.length || 0);
       document.querySelector("#risk-count").textContent = sec || "";
     }
-    const pages = { overview: renderOverview, architecture: renderArchitecture, risk: renderRisk, security: renderRisk, scan: renderNewScan, progress: renderProgress };
+    const pages = { overview: renderOverview, architecture: renderArchitecture, risk: renderRisk, security: renderRisk, remediate: renderRemediate, scan: renderNewScan, progress: renderProgress };
     if (!data && !["scan", "progress"].includes(r.view)) { app.innerHTML = emptyState(); bind(); return; }
     app.innerHTML = (data?._stale ? `<div class="banner-warn stale"><b>The Guardian server is running an older version.</b> It was started before the dashboard was updated, so the graph, SBOM details and risk reports are missing. Stop it (Ctrl+C) and start it again: <code>python -m guardian.cli web --root output/scans</code>, then reload this page.</div>` : "") + (pages[r.view] || renderOverview)(r);
     bind(r);
@@ -548,7 +548,7 @@
       ${(v.unknowns || []).length ? msec("NOT VERIFIED", `<ul class="reason-list">${v.unknowns.map(u => `<li>${esc(u)}</li>`).join("")}</ul>`) : ""}
       <div class="fix-box"><b>Fix</b> ${esc(v.recommendation || "Upgrade to a fixed version.")}</div>
       ${(v.references || []).filter(Boolean).length ? msec("REFERENCES", v.references.filter(Boolean).map(u => `<a class="ref-link" href="${esc(u)}" target="_blank" rel="noopener">${esc(short(u, 80))} ↗</a>`).join("")) : ""}
-      <div class="finding-actions">${(v.sites || [])[0] ? link("Show in architecture graph →", `data-node="${esc(v.sites[0].function)}"`, "primary-button") : ""}${link("Evidence report →", `data-evidence="${esc(v.id)}"`, "quiet-button")}${link("Open in SBOM", `data-pkg="${esc(v.component)}"`, "quiet-button")}</div>`;
+      <div class="finding-actions">${(v.sites || [])[0] ? link("Show in architecture graph →", `data-node="${esc(v.sites[0].function)}"`, "primary-button") : ""}${link("Evidence report →", `data-evidence="${esc(v.id)}"`, "quiet-button")}${link("Open in SBOM", `data-pkg="${esc(v.component)}"`, "quiet-button")}${mode === "web" ? link("Plan the fix →", `data-remfor="${esc(v.id)}"`, "quiet-button") : ""}</div>`;
   }
   function anomalyModal(a) {
     return `<div class="m-head"><div class="eyebrow">SUSPICIOUS REPORT · ${esc(a.id)} · behaviour check</div><h2>${esc(a.componentName || a.component)}</h2><div class="m-tags">${riskTag(a.risk)}${(a.detectors || []).map(d => tag(d, "muted")).join("")}</div><p class="m-lead">${esc(a.capability || a.title)}</p></div>
@@ -558,7 +558,7 @@
       ${a.normal ? msec("POSSIBLE NORMAL EXPLANATION", `<p class="plain">${esc(a.normal)}</p>`) : ""}
       ${msec("EVIDENCE", `<div class="evidence-list">${(a.evidence || []).map(e => `<span class="evidence-chip"><span>⌖</span>${esc(e.file || "")}${e.lines ? ":" + esc(e.lines) : ""}</span>`).join("")}</div>`)}
       <div class="fix-box"><b>Recommendation</b> ${esc(a.recommendation || "")}</div>
-      <div class="finding-actions">${a.function && N.has(a.function) ? link("Show in architecture graph →", `data-node="${esc(a.function)}"`, "primary-button") : N.has(a.component) ? link("Show in graph →", `data-node="${esc(a.component)}"`, "primary-button") : ""}${link("Evidence report →", `data-evidence="${esc(a.id)}"`, "quiet-button")}</div>`;
+      <div class="finding-actions">${a.function && N.has(a.function) ? link("Show in architecture graph →", `data-node="${esc(a.function)}"`, "primary-button") : N.has(a.component) ? link("Show in graph →", `data-node="${esc(a.component)}"`, "primary-button") : ""}${link("Evidence report →", `data-evidence="${esc(a.id)}"`, "quiet-button")}${mode === "web" ? link("Plan the fix →", `data-remfor="${esc(a.id)}"`, "quiet-button") : ""}</div>`;
   }
   function hotspotModal(h) {
     return `<div class="m-head"><div class="eyebrow">SUSPICIOUS REPORT · ${esc(h.id)} · risky code</div><h2>${esc(h.label)}</h2><div class="m-tags">${riskTag(h.level)}${tag(h.category, "muted")}</div><p class="m-lead">${esc(h.what)}: <code>${esc(h.calls.join(", "))}</code> at ${esc(h.file)}:${esc(h.lines.join(", "))}.</p></div>
@@ -580,7 +580,8 @@
       <div class="ev-flow"><button class="ev-box" data-open-item="${esc(x.id)}"><small>FOUND IN</small><b>${isV ? "Vulnerability report (step 3)" : "Suspicious report (step 4)"}</b><span>Open the finding ↗</span></button><i>→</i><div class="ev-box"><small>WHERE IN THE CODE</small>${code || `<span class="muted-small">${isV ? "Package installed; not loaded by your code" : "Repository metadata"}</span>`}</div><i>→</i><div class="ev-box"><small>CONFIDENCE BECAUSE</small>${(x.confidenceReasons || []).map(r => `<span>${esc(r)}</span>`).join("") || "<span>—</span>"}</div></div>
       ${msec("CONNECTED TO", conn ? `<div class="conn-list">${conn}</div>` : `<span class="muted-small">No related commits or findings.</span>`)}
       ${msec(`EVIDENCE · ${(x.claims || []).filter(c => c.verified).length} of ${(x.claims || []).length} claims verified against the repository`, claims || `<span class="muted-small">This finding was classified in the light pass (no agent claims).</span>`)}
-      ${msec(`HOW THE INVESTIGATOR GATHERED IT · ${(x.trace || []).length} steps`, steps ? `<div class="trace">${steps}</div>` : `<span class="muted-small">Classified by fixed rules from the SBOM and the graph, without an agent investigation (low-priority match).</span>`)}`;
+      ${msec(`HOW THE INVESTIGATOR GATHERED IT · ${(x.trace || []).length} steps`, steps ? `<div class="trace">${steps}</div>` : `<span class="muted-small">Classified by fixed rules from the SBOM and the graph, without an agent investigation (low-priority match).</span>`)}
+      ${suggestBox(x)}`;
   }
   function downloadEvidence() {
     const s = data.security, pick = x => { const { trace, claims, connections, presence, ...rest } = x; return { ...rest, presence, connections, claims, investigation: trace }; };
@@ -589,6 +590,140 @@
     a.href = URL.createObjectURL(new Blob([JSON.stringify(rep, null, 2)], { type: "application/json" }));
     a.download = `${data.repo.name || "guardian"}-evidence-report.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
+
+  // ------------------------------------------------------------------ page 4: remediation (Day 2)
+  const REM = { scan: null, list: null, detail: new Map(), loading: false, err: null, timer: null, msg: null };
+  const remApi = (p, opts) => fetch(`/api/scans/${encodeURIComponent(scanId)}${p}`, opts).then(async r => { const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(typeof j.detail === "string" ? j.detail : `HTTP ${r.status}`); return j; });
+  const reviewer = () => localStorage.getItem("guardian-reviewer") || "reviewer";
+  const CONF_CLS = { high: "green", medium: "amber", low: "orange" };
+  const confTag = (label, c) => c ? `<span class="conf-pill ${c}">${label} <b>${esc(c)}</b></span>` : "";
+  const DEC_CLS = { "Act": "act", "Attend": "attend", "Track*": "trackstar", "Track": "track" };
+  const decTag = d => d ? `<span class="dec-tag ${DEC_CLS[d] || ""}">${esc(d)}</span>` : "";
+  const TAB_LABEL = { decide: "Needs your decision", ready: "Ready", auto: "Auto-planned", unresolved: "Unresolved", decided: "Decided" };
+  const STATUS_LABEL = { awaiting_proposal_review: "Proposal awaiting review", awaiting_patch_review: "Tested patch awaiting approval", applied: "Applied to a fix branch", rejected: "Rejected" };
+  const remFor = fid => (REM.list?.items || []).find(i => i.finding_ids.includes(fid));
+
+  async function loadRem(rid, quiet) {
+    if (mode !== "web" || !scanId) return;
+    if (REM.scan !== scanId) { REM.scan = scanId; REM.list = null; REM.detail.clear(); }
+    try {
+      REM.list = await remApi("/remediations");
+      if (rid) REM.detail.set(rid, await remApi(`/remediations/${encodeURIComponent(rid)}`));
+      REM.err = null;
+    } catch (e) { REM.err = e.message; }
+    const cur = route();
+    if (cur.view === "remediate" && !(quiet && document.activeElement?.tagName === "TEXTAREA")) render();
+    const working = (REM.list?.items || []).some(i => i.working);
+    clearTimeout(REM.timer);
+    if (working && route().view === "remediate") REM.timer = setTimeout(() => loadRem(route().p.get("open"), true), 1500);
+  }
+
+  function renderRemediate(r) {
+    const head = title("REMEDIATION", "Fix <span class='title-suffix'>& approve</span>", "Every finding gets a prioritised, checked fix. High-priority items that are not certain wait for your decision; nothing is applied without your approval of the tested patch.");
+    const flow = `<div class="method-strip rm-flow">${["Prioritized risk", "Recommended fix", "Human approval", "Build & test", "Rescan", "Verified remediation"].map((s, i) => `<span class="m-step"><b class="m-num">${i + 1}</b> ${s}</span>`).join("<i>→</i>")}</div>`;
+    if (mode !== "web") return head + `<div class="panel empty-big"><p>Remediation needs the Guardian server (approvals, sandbox validation and the agent run there):</p><pre class="cmd">python -m guardian.cli web --root output/scans</pre></div>`;
+    if (REM.scan !== scanId || (!REM.list && !REM.err)) { loadRem(r.p.get("open")); return head + flow + `<div class="panel empty-big"><p>Loading remediation plan…</p></div>`; }
+    if (REM.err && !REM.list) return head + `<div class="banner-warn">${esc(REM.err)}</div>`;
+    if (!REM.list.available) return head + flow + `<div class="panel empty-big"><p>This scan has no remediation plan yet. Run <code>python -m guardian.cli remediate output/scans/${esc(scanId)}</code> (new scans do this automatically).</p></div>`;
+    const tab = r.p.get("tab") || (REM.list.counts.decide ? "decide" : "all"), c = REM.list.counts;
+    const items = REM.list.items.filter(i => tab === "all" || i.tab === tab).sort((a, b) => a.rank - b.rank);
+    const chip = (k, l, n) => `<button class="filter-chip ${tab === k ? "active" : ""}" data-rm-tab="${k}">${l} <small>${n}</small></button>`;
+    const rows = items.map(i => `<button class="vt-row rm" data-rm-open="${esc(i.rid)}"><span class="mono">${esc(i.rid)}<small>#${i.rank}</small></span><span><b>${esc(i.target_label)}</b><small>${esc(short(i.action || "", 110))}</small><small class="muted-small">${i.finding_ids.map(esc).join(" · ")}${i.author && i.author !== "template" ? " · by agent" : ""}</small></span><span>${decTag(i.decision)}</span><span>${riskTag(i.priority)}${i.stage_risk !== i.priority ? `<small>rules: ${esc(i.stage_risk)}</small>` : ""}</span><span>${confTag("", i.finding_confidence)}</span><span>${confTag("", i.fix_confidence)}</span><span class="rm-status">${i.working ? `<span class="spin"></span> ${esc(i.working.what)}` : esc(STATUS_LABEL[i.status] || i.status || "")}${i.branch ? `<small class="mono">${esc(i.branch)}</small>` : ""}${i.tab === "decide" && i.gate_reasons.length ? `<small>${esc(i.gate_reasons.join(" · "))}</small>` : ""}</span></button>`).join("");
+    const open = r.p.get("open");
+    return head + flow + `<section class="panel"><div class="panel-header"><div><h2>Remediation plan</h2><p>${REM.list.items.length} remediations for ${REM.list.items.reduce((n, i) => n + i.finding_ids.length, 0)} findings · one upgrade can fix several CVEs · workflow engine: ${esc(REM.list.engine || "")}</p></div></div>
+      <div class="table-filters"><div class="filter-chips">${chip("decide", "Needs your decision", c.decide)}${chip("ready", "Ready", c.ready)}${chip("auto", "Auto-planned", c.auto)}${chip("unresolved", "Unresolved", c.unresolved)}${chip("decided", "Decided", c.decided)}${chip("all", "All", REM.list.items.length)}</div></div>
+      <div class="vtable"><div class="vt-head rm"><span>ID</span><span>REMEDIATION</span><span>DECISION</span><span>PRIORITY</span><span>FINDING CONF.</span><span>FIX CONF.</span><span>STATUS</span></div>${rows || `<div class="empty-state">Nothing in this tab.</div>`}</div></section>`
+      + (open ? remModal(open) : "");
+  }
+
+  function diffHtml(d) {
+    return `<pre class="diff">${d.split("\n").map(l => `<span class="${l.startsWith("+++") || l.startsWith("---") ? "dh" : l.startsWith("@@") ? "dc" : l.startsWith("+") ? "da" : l.startsWith("-") ? "dd" : ""}">${esc(l)}</span>`).join("\n")}</pre>`;
+  }
+  const chk = (label, c) => `<div class="chk-row"><span class="chk ${c.status}">${{ pass: "✓", fail: "✕", unknown: "?", "n/a": "–", skipped: "–", unsure: "?" }[c.status] || "·"}</span><b>${esc(label)}</b><small>${esc(c.detail || "")}</small></div>`;
+  const CHK_LABEL = { patch_applies: "Patch applies", scope_ok: "Only allowed files", candidate_clean: "New version has no known vulns", constraints_resolve: "Dependency constraints resolve", available: "Version on the index", runtime_compatible: "Python version compatible", lockfile_consistent: "Lockfile matches manifest", security_check: "Security check on patched files", ai_critic: "Independent AI review", build: "Build", tests: "Tests (no regressions)", rescan_resolved: "Rescan: finding resolved", no_new_vulns: "Rescan: nothing new introduced" };
+
+  function remModal(rid) {
+    const u = REM.detail.get(rid);
+    if (!u) { loadRem(rid); return `<div class="modal-back" id="modal-back"><div class="modal" role="dialog" aria-modal="true"><button class="modal-x" id="modal-x" aria-label="Close">×</button><div class="empty-state">Loading ${esc(rid)}…</div></div></div>`; }
+    const p = u.proposals[u.current] || {}, paused = u.paused_at, v = u.validation;
+    const IN_LABEL = { exploitation: "Exploitation", automatable: "Automatable", technical_impact: "Technical impact", mission: "Mission & well-being", suspicion: "Suspicion", exposure: "Exposure" };
+    const why = (u.findings || []).map(f => `<div class="why-card"><div class="why-top"><b>${esc(f.finding_id)}</b> ${esc(short(f.title, 90))} ${decTag(f.decision)}${riskTag(f.priority)}<button class="text-link" data-evidence="${esc(f.finding_id)}">View evidence →</button></div>
+      <div class="dp-row">${Object.entries(IN_LABEL).filter(([k]) => f.decision_inputs?.[k] != null).map(([k, l]) => `<span class="dp" title="${esc(f.decision_why?.[k] || "")}"><small>${l}</small><b>${esc(String(f.decision_inputs[k]).replace(/_/g, " "))}</b><i class="by ${f.decision_by?.[k]}">${f.decision_by?.[k] === "ai" ? "AI" : "rule"}</i></span>`).join("")}</div>
+      <div class="dp-facts">${f.kind === "vulnerability" ? `CVSS <b>${f.cvss?.score ?? "?"}</b> · EPSS ${f.epss ? `<b>${f.epss.probability ?? "?"}</b> (pct ${f.epss.percentile ?? "?"})` : "<b>n/a</b>"} · KEV <b>${f.kev ? "yes" : "no"}</b>` : "CVSS / EPSS / KEV: <b>n/a</b> (supply-chain finding, no CVE)"} · sensitivity <b>${esc(f.sensitivity?.level || "")}</b> · model ${esc(f.decision_model)}</div>
+      <ul class="reason-list">${(f.priority_reasons || []).map(x => `<li>${esc(x)}</li>`).join("")}${(f.confidence_reasons || []).slice(1).map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+      ${Object.entries(f.decision_why || {}).filter(([k]) => f.decision_by?.[k] === "ai").slice(0, 1).map(([, t]) => `<p class="muted-small ai-note"><span class="ai-badge">AI</span> ${esc(t)}</p>`).join("")}
+      ${(f.history || []).filter(h => h.change_reason).slice(-1).map(h => `<p class="muted-small">History: ${esc(h.change_reason)}</p>`).join("")}</div>`).join("");
+    const er = p.expected_risk || {};
+    const fix = `<div class="fix-head"><b>${esc(p.action || "")}</b><div class="m-tags">${tag(`v${p.version} · ${p.author === "template" ? "deterministic template" : p.author}`, p.author === "template" ? "muted" : "violet")}${p.skill ? tag(`skill: ${p.skill}`, "blue") : ""}${confTag("fix confidence", p.fix_confidence)}</div></div>
+      <div class="risk-move">${riskTag(er.before)}<i>→</i>${er.after === "none" ? tag("resolved", "green") : riskTag(er.after)}<small>${esc(er.effect || "")}</small></div>
+      ${p.feedback ? `<p class="muted-small">Your feedback: “${esc(p.feedback)}”</p>` : ""}
+      ${p.diff ? diffHtml(p.diff) : `<div class="open-question"><span>!</span><div><b>No code change</b><p>${esc((p.notes || []).join(" ") || "Escalation: a person has to act. Use “Revise with agent” to draft a patch.")}</p></div></div>`}
+      <div class="fix-grid">${msec("COMPATIBILITY", `<ul class="reason-list">${(p.compatibility || []).map(x => `<li>${esc(x)}</li>`).join("") || "<li>—</li>"}</ul>`)}${msec("ROLLBACK", `<p class="plain">${esc(p.rollback || "—")}</p>`)}</div>
+      ${(p.notes || []).length && p.diff ? msec("NOTES", `<ul class="reason-list">${p.notes.map(x => `<li>${esc(x)}</li>`).join("")}</ul>`) : ""}
+      ${(p.alternatives_rejected || []).length ? msec("ALTERNATIVES THE AGENT REJECTED", `<ul class="reason-list">${p.alternatives_rejected.map(a => `<li><b>${esc(a.candidate)}</b>: ${esc(a.why)}</li>`).join("")}</ul>`) : ""}
+      ${(p.agent?.trace || []).length ? `<details class="agent-trace"><summary>How the agent worked · ${p.agent.tool_calls} tool calls · skills loaded: ${esc((p.agent.skills_loaded || []).join(", ") || "none")}</summary>${p.agent.trace.map((t, i) => `<div class="tstep ${t.ok ? "" : "fail"}"><span class="tnum">${i + 1}</span><div><div class="ttop"><code>${esc(t.tool)}</code></div><small class="tin">${esc(t.input)}</small><p>${esc(t.result)}</p></div></div>`).join("")}</details>` : ""}`;
+    const checks = Object.entries(p.checks || {}).filter(([, c]) => c.status !== "n/a").map(([k, c]) => chk(CHK_LABEL[k] || k, c)).join("");
+    const val = v ? `<div class="val-box ${v.status}"><b>Sandbox validation: ${esc(v.status)}</b>${v.detail ? `<small>${esc(v.detail)}</small>` : ""}<ol class="val-steps">${(v.steps || []).map(s => `<li>${esc(s.msg)}</li>`).join("")}</ol>${v.rescan ? `<div class="sbom-diff"><span><small>SBOM REMOVED</small>${(v.rescan.sbom_diff.removed || []).map(x => tag(x, "orange")).join("") || "—"}</span><span><small>SBOM CHANGED</small>${(v.rescan.sbom_diff.changed || []).map(x => tag(x, "blue")).join("") || "—"}</span><span><small>SBOM ADDED</small>${(v.rescan.sbom_diff.added || []).map(x => tag(x, "amber")).join("") || "—"}</span><span><small>FINDINGS</small>${v.rescan.before_total} → ${v.rescan.after_total}</span></div>` : ""}${v.install ? `<small class="muted-small">${esc(v.install.detail)}</small>` : ""}</div>` : "";
+    const alts = u.candidates.filter(cd => cd.cid !== p.candidate_id || p.author !== "template").map(cd => `<div class="alt-row ${cd.excluded ? "excluded" : ""}"><span><b>${esc(cd.label)}</b><small>${esc([...(cd.notes || []), ...(cd.compatibility || [])].slice(0, 2).join(" · "))}</small></span>${!cd.excluded && paused === "proposal_review" && !u.working ? `<button class="quiet-button" data-rm-alt="${cd.cid}">Use this</button>` : cd.excluded ? tag("excluded", "muted") : ""}</div>`).join("");
+    const agentN = u.proposals.filter(x => String(x.author).startsWith("agent")).length;
+    let actions = "";
+    if (u.working) actions = `<div class="working-box"><span class="spin"></span><b>${esc(u.working.what)}…</b><small>${esc(u.working.step || "")}</small></div>`;
+    else if (u.status === "applied") actions = `<div class="val-box passed"><b>Applied.</b> ${esc(u.applied?.detail || "")}</div>`;
+    else if (u.status === "rejected") actions = `<div class="val-box failed"><b>Rejected</b> at the ${esc(u.rejection?.stage || "")} stage by ${esc(u.rejection?.by || "")}: ${esc(u.rejection?.reason || "")}</div>`;
+    else if (paused) {
+      const stage = paused === "patch_review" ? "patch" : "proposal";
+      const primary = stage === "proposal" ? (p.edits?.length ? `<button class="primary-button" data-rm-act="approve" data-stage="proposal">Approve proposal → validate in sandbox</button>` : "") : `<button class="primary-button" data-rm-act="approve" data-stage="patch">Approve tested patch → create fix branch</button><button class="quiet-button" data-rm-act="revalidate" data-stage="patch">Re-run validation</button>`;
+      actions = `<div class="rm-actions"><div class="detail-label">${stage === "proposal" ? "STEP 1 OF 2 · APPROVE THE APPROACH" : "STEP 2 OF 2 · APPROVE THE TESTED CODE CHANGE"}</div>
+        <div class="act-row">${primary}<label class="rv">reviewer <input id="rm-reviewer" value="${esc(reviewer())}"></label></div>
+        <textarea id="rm-text" rows="2" placeholder="${stage === "patch" && v?.status !== "passed" ? "Reason (required to approve a patch whose validation did not pass, or to reject)" : "Tell the agent what to change (e.g. keep 5.x, switch to safe_load) — or a reason to reject"}"></textarea>
+        <div class="act-row"><button class="quiet-button" data-rm-act="revise" data-stage="${stage}" ${agentN >= 3 ? "disabled" : ""}>✦ Revise with agent</button><button class="quiet-button" data-rm-act="regenerate" data-stage="${stage}" ${agentN >= 3 ? "disabled" : ""}>✦ Regenerate with agent</button><button class="quiet-button danger" data-rm-act="reject" data-stage="${stage}">Reject</button><small class="muted-small">${agentN}/3 agent proposals used · the agent uses the large model when available</small></div>
+        ${REM.msg ? `<div class="banner-warn">${esc(REM.msg)}</div>` : ""}</div>`;
+    }
+    const tl = (u.audit || []).map(e => `<li><small>${esc((e.at || "").replace("T", " ").replace("Z", ""))}</small><b>${esc(e.event.replace(/_/g, " "))}</b> ${esc([e.stage, e.action, e.author, e.version && `v${e.version}`, e.status, e.reviewer && `by ${e.reviewer}`, e.reason && `“${e.reason}”`, e.feedback && `“${e.feedback}”`, e.branch, e.error].filter(Boolean).join(" · "))}</li>`).join("");
+    const body = `<div class="m-head"><div class="eyebrow">REMEDIATION · ${esc(u.rid)} · covers ${u.finding_ids.map(esc).join(", ")}</div><h2>${esc(u.target_label)}</h2><div class="m-tags">${decTag(u.decision)}${riskTag(u.priority)}${confTag("finding confidence", u.finding_confidence)}${tag(TAB_LABEL[u.tab] || u.tab, u.tab === "decide" ? "orange" : "muted")}${tag(STATUS_LABEL[u.status] || u.status, "muted")}</div>${(u.gate?.reasons || []).length && u.tab === "decide" ? `<p class="m-lead">Needs your decision because: ${esc(u.gate.reasons.join("; "))}.</p>` : ""}</div>
+      ${u.last_agent_error ? `<div class="banner-warn"><b>The agent's last attempt was not used:</b> ${esc(u.last_agent_error)}</div>` : ""}${u.last_error ? `<div class="banner-warn">${esc(u.last_error)}</div>` : ""}
+      ${actions}
+      ${msec("PROPOSED FIX", fix)}
+      ${msec(`CHECKS · fix confidence ${esc(p.fix_confidence || "")}`, `<div class="chk-list">${checks}</div>${(p.fix_confidence_reasons || []).length ? `<p class="muted-small">Fix confidence ${esc(p.fix_confidence)}: ${esc(p.fix_confidence_reasons.join("; "))}</p>` : ""}${val}`)}
+      ${msec("WHY THIS PRIORITY", why)}
+      ${alts ? msec("OTHER CANDIDATES", `<div class="alt-list">${alts}</div>`) : ""}
+      ${u.proposals.length > 1 ? msec("EARLIER PROPOSALS", `<ul class="reason-list">${u.proposals.slice(0, -1).map(x => `<li>v${x.version} · ${esc(x.author)} · ${esc(x.action)} · fix confidence ${esc(x.fix_confidence)}</li>`).join("")}</ul>`) : ""}
+      ${msec("AUDIT TRAIL", `<ol class="timeline">${tl || "<li>—</li>"}</ol>`)}`;
+    return `<div class="modal-back" id="modal-back"><div class="modal wide" role="dialog" aria-modal="true"><button class="modal-x" id="modal-x" aria-label="Close">×</button>${body}</div></div>`;
+  }
+
+  async function remDecide(rid, body) {
+    REM.msg = null;
+    const name = document.querySelector("#rm-reviewer")?.value.trim(); if (name) localStorage.setItem("guardian-reviewer", name);
+    try {
+      await remApi(`/remediations/${encodeURIComponent(rid)}/decision`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reviewer: reviewer(), ...body }) });
+    } catch (e) { REM.msg = e.message; }
+    await loadRem(rid);
+  }
+  function bindRem(r) {
+    app.querySelectorAll("[data-rm-tab]").forEach(el => el.addEventListener("click", () => go("remediate", "", { tab: el.dataset.rmTab })));
+    app.querySelectorAll("[data-rm-open]").forEach(el => el.addEventListener("click", () => { REM.msg = null; go("remediate", "", { tab: r.p.get("tab"), open: el.dataset.rmOpen }); loadRem(el.dataset.rmOpen); }));
+    const rid = r.p.get("open");
+    app.querySelectorAll("[data-rm-act]").forEach(el => el.addEventListener("click", () => {
+      const text = document.querySelector("#rm-text")?.value.trim() || "", a = el.dataset.rmAct;
+      const body = { stage: el.dataset.stage, action: a };
+      if (a === "revise") { body.feedback = text; body.large = true; }
+      if (a === "regenerate") { body.feedback = text || null; body.large = true; }
+      if (a === "reject" || a === "approve") body.reason = text || null;
+      remDecide(rid, body);
+    }));
+    app.querySelectorAll("[data-rm-alt]").forEach(el => el.addEventListener("click", () => remDecide(rid, { stage: "proposal", action: "alternative", alternative: +el.dataset.rmAlt })));
+    app.querySelectorAll("[data-remfor]").forEach(el => el.addEventListener("click", ev => { ev.stopPropagation(); const it = remFor(el.dataset.remfor); go("remediate", "", it ? { tab: "all", open: it.rid } : {}); }));
+    app.querySelectorAll("[data-suggest]").forEach(el => el.addEventListener("click", async ev => {
+      ev.stopPropagation(); const fid = el.dataset.suggest, box = document.querySelector("#sg-text"), msg = document.querySelector("#sg-msg");
+      if (!box.value.trim()) { msg.textContent = "Write what the fix should do first."; return; }
+      try {
+        const row = await remApi(`/findings/${encodeURIComponent(fid)}/suggest`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ feedback: box.value.trim(), reviewer: reviewer(), large: true }) });
+        REM.scan = null; go("remediate", "", { tab: "all", open: row.rid });
+      } catch (e) { msg.textContent = e.message; }
+    }));
+  }
+  const suggestBox = x => mode === "web" ? `<div class="m-sec suggest"><div class="detail-label">SUGGEST A REMEDIATION</div><p class="muted-small">Your suggestion goes to the remediation agent for this finding; the new proposal is checked and waits for your approval on the Remediation page.</p><textarea id="sg-text" rows="2" placeholder="e.g. keep PyYAML 5.x and switch the loader to yaml.safe_load"></textarea><div class="act-row"><button class="primary-button" data-suggest="${esc(x.id)}">✦ Send to remediation agent</button><button class="quiet-button" data-remfor="${esc(x.id)}">Go to remediation →</button><small id="sg-msg" class="muted-small"></small></div></div>` : "";
 
   // ------------------------------------------------------------------ new scan + progress (guardian web)
   function renderNewScan() {
@@ -656,6 +791,7 @@
     app.querySelectorAll("[data-open-scan]").forEach(el => el.addEventListener("click", () => el.dataset.status === "running" ? go("progress", "", { id: el.dataset.openScan }) : (location.href = `${location.pathname}?scan=${encodeURIComponent(el.dataset.openScan)}#/overview`)));
     app.querySelectorAll("[data-example]").forEach(el => el.addEventListener("click", () => { document.querySelector("#scan-input").value = el.dataset.example; }));
     document.querySelector("#scan-form")?.addEventListener("submit", submitScan);
+    if (r) bindRem(r);
     document.querySelector("#cdx-download")?.addEventListener("click", downloadCdx);
     const sq = document.querySelector("#sbom-q");
     if (sq) { let t; sq.addEventListener("input", () => { clearTimeout(t); t = setTimeout(() => { go("architecture", "sbom", { q: sq.value, f: r.p.get("f"), sel: r.p.get("sel") }); setTimeout(() => { const n = document.querySelector("#sbom-q"); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } }, 0); }, 250); }); }
@@ -717,6 +853,7 @@
       const d = await fetch(`/api/scans/${encodeURIComponent(scanId)}/dashboard`);
       if (!d.ok) { data = null; setPill("SCAN FAILED"); location.hash = `#/progress?id=${encodeURIComponent(scanId)}`; return render(); }
       data = normalize(await d.json()); buildIndex(); setPill(pick.demo ? "DEMO SCAN" : "LIVE SCAN");
+      loadRem(new URLSearchParams(location.hash.split("?")[1] || "").get("open")).then(() => { const n = REM.list?.counts?.decide; const el = document.querySelector("#rem-count"); if (el) el.textContent = n || ""; });
       return render();
     } catch { /* not guardian web */ }
     try {                                                    // guardian serve: one scan
